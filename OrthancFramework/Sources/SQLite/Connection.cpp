@@ -55,7 +55,6 @@
 
 #include <sqlite3.h>
 
-
 namespace Orthanc
 {
   namespace SQLite
@@ -84,13 +83,13 @@ namespace Orthanc
 
     void Connection::Open(const std::string& path)
     {
-      if (db_) 
+      if (db_)
       {
         throw OrthancSQLiteException(ErrorCode_SQLiteAlreadyOpened);
       }
 
       int err = sqlite3_open(path.c_str(), &db_);
-      if (err != SQLITE_OK) 
+      if (err != SQLITE_OK)
       {
         Close();
         db_ = NULL;
@@ -108,7 +107,7 @@ namespace Orthanc
       Open(":memory:");
     }
 
-    void Connection::Close() 
+    void Connection::Close()
     {
       ClearCache();
 
@@ -121,8 +120,8 @@ namespace Orthanc
 
     void Connection::ClearCache()
     {
-      for (CachedStatements::iterator 
-             it = cachedStatements_.begin(); 
+      for (CachedStatements::iterator
+             it = cachedStatements_.begin();
            it != cachedStatements_.end(); ++it)
       {
         delete it->second;
@@ -154,7 +153,7 @@ namespace Orthanc
     }
 
 
-    bool Connection::Execute(const char* sql) 
+    bool Connection::Execute(const char* sql)
     {
 #if ORTHANC_SQLITE_STANDALONE != 1
       CLOG(TRACE, SQLITE) << "SQLite::Connection::Execute " << sql;
@@ -195,11 +194,11 @@ namespace Orthanc
       return true;
     }
 
-    bool Connection::DoesTableOrIndexExist(const char* name, 
+    bool Connection::DoesTableOrIndexExist(const char* name,
                                            const char* type) const
     {
       // Our SQL is non-mutating, so this cast is OK.
-      Statement statement(const_cast<Connection&>(*this), 
+      Statement statement(const_cast<Connection&>(*this),
                           "SELECT name FROM sqlite_master WHERE type=? AND name=?");
       statement.BindString(0, type);
       statement.BindString(1, name);
@@ -232,6 +231,27 @@ namespace Orthanc
       return false;
     }
 
+    // currently not used but it might be useful in the future if we want to add an "optimize-db" API route
+    void Connection::Optimize(bool onlyIfStatsDontExistsYet)
+    {
+      if (onlyIfStatsDontExistsYet)
+      {
+        if (!DoesTableExist("sqlite_stat1")) // create the table if it does not exist yet and if there are enough data in the Resources table
+        {
+          CLOG(WARNING, SQLITE) << "SQLite: Performing first ANALYZE to improve the query planner";
+          Statement analyze(*this, "ANALYZE");
+          analyze.Run();
+        }
+      }
+      else
+      {
+        CLOG(WARNING, SQLITE) << "SQLite: Performing OPTIMIZE to improve the query planner";
+        Statement analyze(*this, "PRAGMA OPTIMIZE");  // OPTIMIZE runs ANALYZE only if it makes sense
+        analyze.Run();
+        CLOG(WARNING, SQLITE) << "SQLite: OPTIMIZE completed";
+      }
+    }
+
     int64_t Connection::GetLastInsertRowId() const
     {
       return sqlite3_last_insert_rowid(db_);
@@ -242,12 +262,12 @@ namespace Orthanc
       return sqlite3_changes(db_);
     }
 
-    int Connection::GetErrorCode() const 
+    int Connection::GetErrorCode() const
     {
       return sqlite3_errcode(db_);
     }
 
-    int Connection::GetLastErrno() const 
+    int Connection::GetLastErrno() const
     {
       int err = 0;
       if (SQLITE_OK != sqlite3_file_control(db_, NULL, SQLITE_LAST_ERRNO, &err))
@@ -256,7 +276,7 @@ namespace Orthanc
       return err;
     }
 
-    const char* Connection::GetErrorMessage() const 
+    const char* Connection::GetErrorMessage() const
     {
       return sqlite3_errmsg(db_);
     }
@@ -290,7 +310,7 @@ namespace Orthanc
       }
 
       bool success = true;
-      if (!transactionNesting_) 
+      if (!transactionNesting_)
       {
         needsRollback_ = false;
 
@@ -321,21 +341,21 @@ namespace Orthanc
       DoRollback();
     }
 
-    bool Connection::CommitTransaction() 
+    bool Connection::CommitTransaction()
     {
-      if (!transactionNesting_) 
+      if (!transactionNesting_)
       {
         throw OrthancSQLiteException(ErrorCode_SQLiteCommitWithoutTransaction);
       }
       transactionNesting_--;
 
-      if (transactionNesting_ > 0) 
+      if (transactionNesting_ > 0)
       {
         // Mark any nested transactions as failing after we've already got one.
         return !needsRollback_;
       }
 
-      if (needsRollback_) 
+      if (needsRollback_)
       {
         DoRollback();
         return false;
@@ -345,7 +365,7 @@ namespace Orthanc
       return commit.Run();
     }
 
-    void Connection::DoRollback() 
+    void Connection::DoRollback()
     {
       Statement rollback(*this, SQLITE_FROM_HERE, "ROLLBACK");
       rollback.Run();
@@ -380,10 +400,10 @@ namespace Orthanc
 
     IScalarFunction* Connection::Register(IScalarFunction* func)
     {
-      int err = sqlite3_create_function_v2(db_, 
-                                           func->GetName(), 
+      int err = sqlite3_create_function_v2(db_,
+                                           func->GetName(),
                                            static_cast<int>(func->GetCardinality()),
-                                           SQLITE_UTF8, 
+                                           SQLITE_UTF8,
                                            func,
                                            ScalarFunctionCaller,
                                            NULL,

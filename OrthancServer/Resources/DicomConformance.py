@@ -11,7 +11,7 @@
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation, either version 3 of the
 # License, or (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -108,8 +108,8 @@ for i in range(len(transfer_syntaxes)):
 
 
 # Inject into the template conformance statement of Orthanc
-with open(os.path.join(os.path.dirname(__file__), 'DicomConformanceStatement.mustache'), 'r') as f:
-    with open(os.path.join(os.path.dirname(__file__), 'DicomConformanceStatement.txt'), 'w') as g:
+with open(os.path.join(os.path.dirname(__file__), 'DicomConformance.mustache'), 'r') as f:
+    with open(os.path.join(os.path.dirname(__file__), 'DicomConformance.txt'), 'w') as g:
         g.write(pystache.render(f.read(), {
             'store_scp' : store_scp,
             'draft_store_scp' : draft_store_scp,

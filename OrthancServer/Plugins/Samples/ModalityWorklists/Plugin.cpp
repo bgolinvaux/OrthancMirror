@@ -56,7 +56,7 @@ static bool MatchWorklist(OrthancPluginWorklistAnswers*      answers,
     if (code != OrthancPluginErrorCode_Success)
     {
       ORTHANC_PLUGINS_LOG_ERROR("Error while adding an answer to a worklist request");
-      ORTHANC_PLUGINS_THROW_PLUGIN_ERROR_CODE(code);
+      ORTHANC_PLUGINS_THROW_ERROR_CODE(code);
     }
 
     return true;
@@ -132,7 +132,7 @@ static OrthancPlugins::FindMatcher* CreateMatcher(const OrthancPluginWorklistQue
     // Encode the modified JSON as a DICOM instance, then convert it to a C-Find matcher
     OrthancPlugins::MemoryBuffer modified;
     modified.CreateDicom(json, OrthancPluginCreateDicomFlags_None);
-    
+
     return new OrthancPlugins::FindMatcher(modified);
   }
 }
@@ -159,7 +159,7 @@ OrthancPluginErrorCode Callback(OrthancPluginWorklistAnswers*     answers,
     {
       unsigned int parsedFilesCount = 0;
       unsigned int matchedWorklistCount = 0;
-      
+
       for (fs::directory_iterator it(source); it != end; ++it)
       {
         fs::file_type type(it->status().type());
@@ -185,7 +185,7 @@ OrthancPluginErrorCode Callback(OrthancPluginWorklistAnswers*     answers,
                 OrthancPluginWorklistMarkIncomplete(OrthancPlugins::GetGlobalContext(), answers);
                 return OrthancPluginErrorCode_Success;
               }
-              
+
               ORTHANC_PLUGINS_LOG_INFO("Worklist matched: " + it->path().string());
               matchedWorklistCount++;
             }

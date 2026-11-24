@@ -10,7 +10,7 @@
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -35,31 +35,34 @@ namespace Orthanc
     class Report : public boost::noncopyable
     {
     public:
+      typedef std::map<std::string, std::string> RequestedInstancesAndSopClasses;
+
       enum Status
       {
         Status_Success,
         Status_Failure,
         Status_Pending
       };
-      
+
     private:
       struct Success
       {
         std::string  sopClassUid_;
         std::string  sopInstanceUid_;
       };
-      
+
       struct Failure
       {
         std::string  sopClassUid_;
         std::string  sopInstanceUid_;
         StorageCommitmentFailureReason  reason_;
       };
-      
+
       bool                isComplete_;
       std::list<Success>  success_;
       std::list<Failure>  failures_;
       std::string         remoteAet_;
+      RequestedInstancesAndSopClasses requetsedInstances_;
 
     public:
       explicit Report(const std::string& remoteAet) :
@@ -75,6 +78,9 @@ namespace Orthanc
 
       void MarkAsComplete();
 
+      void AddRequestedInstances(const std::vector<std::string>& sopClassesUids,
+                                 const std::vector<std::string>& sopInstancesUids);
+
       void AddSuccess(const std::string& sopClassUid,
                       const std::string& sopInstanceUid);
 
@@ -87,11 +93,13 @@ namespace Orthanc
       void Format(Json::Value& json) const;
 
       void GetSuccessSopInstanceUids(std::vector<std::string>& target) const;
+
+      const RequestedInstancesAndSopClasses& GetRequestedInstancesAndSopClasses() const;
     };
 
   private:
     typedef LeastRecentlyUsedIndex<std::string, Report*>  Content;
-    
+
     boost::mutex   mutex_;
     Content        content_;
     size_t         maxSize_;

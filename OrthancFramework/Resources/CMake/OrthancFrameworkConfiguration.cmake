@@ -294,7 +294,7 @@ if (ENABLE_CRYPTO_OPTIONS)
       message(FATAL_ERROR "OpenSSL is required to enable PKCS#11 support")
     endif()
   else()
-    add_definitions(-DORTHANC_ENABLE_PKCS11=0)  
+    add_definitions(-DORTHANC_ENABLE_PKCS11=0)
   endif()
 endif()
 
@@ -426,7 +426,7 @@ if (ENABLE_PNG)
   if (NOT ENABLE_MODULE_IMAGES)
     message(FATAL_ERROR "Image processing primitives must be enabled if enabling libpng support")
   endif()
-  
+
   include(${CMAKE_CURRENT_LIST_DIR}/LibPngConfiguration.cmake)
   add_definitions(-DORTHANC_ENABLE_PNG=1)
 
@@ -484,7 +484,7 @@ if (ENABLE_LOCALE)
       message(FATAL_ERROR "Invalid value for BOOST_LOCALE_BACKEND: ${BOOST_LOCALE_BACKEND}")
     endif()
   endif()
-  
+
   add_definitions(-DORTHANC_ENABLE_LOCALE=1)
 endif()
 
@@ -612,6 +612,9 @@ if (ENABLE_DCMTK)
   else()
     add_definitions(-DORTHANC_ENABLE_DCMTK_TRANSCODING=0)
   endif()
+
+  # New in Orthanc 1.13.1
+  add_definitions(-DORTHANC_DCMTK_VERSION_RECOMMENDED=${ORTHANC_DCMTK_VERSION_RECOMMENDED})
 endif()
 
 
@@ -649,6 +652,7 @@ if (ORTHANC_ENABLE_THREADS)
     ${CMAKE_CURRENT_LIST_DIR}/../../Sources/MultiThreading/BlockingSharedMessageQueue.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../../Sources/MultiThreading/Internals/FutureState.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../../Sources/MultiThreading/Internals/ThreadPoolFuture.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/../../Sources/MultiThreading/PeriodicRunnableThread.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../../Sources/MultiThreading/RunnableWorkersPool.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../../Sources/MultiThreading/Semaphore.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../../Sources/MultiThreading/SharedMessageQueue.cpp
@@ -684,7 +688,7 @@ if (ORTHANC_SANDBOXED)
   else()
     set(ORTHANC_ENABLE_LOGGING OFF)
   endif()
-  
+
 else()
   set(ORTHANC_ENABLE_LOGGING ON)
   set(ORTHANC_ENABLE_LOGGING_STDIO OFF)
@@ -842,7 +846,7 @@ if (ENABLE_DCMTK)
   list(APPEND ORTHANC_DICOM_SOURCES_DEPENDENCIES
     ${DCMTK_SOURCES}
     )
-  
+
   set(ORTHANC_DICOM_SOURCES
     ${ORTHANC_DICOM_SOURCES_INTERNAL}
     ${ORTHANC_DICOM_SOURCES_DEPENDENCIES}

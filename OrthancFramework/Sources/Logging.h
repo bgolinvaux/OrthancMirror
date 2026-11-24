@@ -29,6 +29,7 @@
 #include "Compatibility.h"
 
 #include <boost/noncopyable.hpp>
+#include <boost/shared_ptr.hpp>
 #include <iostream>
 #include <stdint.h>
 
@@ -113,7 +114,8 @@ namespace Orthanc
                              const std::string& pluginName,
                              const char* file,
                              uint32_t line,
-                             const std::string& message) = 0;
+                             const std::string& message,
+                             const char* messageId) = 0;
     };
 
 
@@ -151,7 +153,7 @@ namespace Orthanc
 
     ORTHANC_PUBLIC ThreadContextMemento* CreateCurrentThreadContextMemento();
 
-    ORTHANC_PUBLIC void AddLoggingListener(ILoggingListener* listener);
+    ORTHANC_PUBLIC void AddLoggingListener(const boost::shared_ptr<ILoggingListener>& listener);
 
     ORTHANC_PUBLIC void ClearLoggingListeners();
 
@@ -169,9 +171,14 @@ namespace Orthanc
 
     ORTHANC_PUBLIC bool IsCategoryEnabled(LogLevel level,
                                           LogCategory category);
-    
+
     ORTHANC_PUBLIC bool LookupCategory(LogCategory& target,
                                        const std::string& category);
+
+    ORTHANC_PUBLIC void SetMessageIdEnabled(const std::string& messageId,
+                                            bool enabled);
+
+    ORTHANC_PUBLIC bool IsMessageIdEnabled(const std::string& messageId);
 
     ORTHANC_PUBLIC unsigned int GetCategoriesCount();
 
@@ -209,12 +216,12 @@ namespace Orthanc
 
     struct ORTHANC_LOCAL NullStream : public std::ostream
     {
-      NullStream() : 
-        std::ios(0), 
+      NullStream() :
+        std::ios(0),
         std::ostream(0)
       {
       }
-      
+
       template <typename T>
       std::ostream& operator<< (const T& message)
       {
@@ -247,9 +254,10 @@ namespace Orthanc
 
 #if ORTHANC_ENABLE_LOGGING != 1
 #  define LOG(level)            ::Orthanc::Logging::NullStream()
+#  define LOG_WARNING(warningId) ::Orthanc::Logging::NullStream()
 #  define VLOG(unused)          ::Orthanc::Logging::NullStream()
 #  define CLOG(level, category) ::Orthanc::Logging::NullStream()
-#  define LOG_FROM_PLUGIN(level, category, pluginName, file, line)  ::Orthanc::Logging::NullStream()
+#  define LOG_FROM_PLUGIN(level, category, pluginName, file, line, messageId)  ::Orthanc::Logging::NullStream()
 #else /* ORTHANC_ENABLE_LOGGING == 1 */
 
 #if !defined(__ORTHANC_FILE__)
@@ -264,20 +272,25 @@ namespace Orthanc
 #  define LOG(level)     ::Orthanc::Logging::InternalLogger             \
   (::Orthanc::Logging::LogLevel_ ## level,                              \
    ::Orthanc::Logging::LogCategory_GENERIC, NULL /* no plugin */,       \
-   __ORTHANC_FILE__, __LINE__)
+   __ORTHANC_FILE__, __LINE__, NULL)
+
+#  define LOG_WARNING(warningId)     ::Orthanc::Logging::InternalLogger             \
+  (::Orthanc::Logging::LogLevel_WARNING,                              \
+   ::Orthanc::Logging::LogCategory_GENERIC, NULL /* no plugin */,       \
+   __ORTHANC_FILE__, __LINE__, warningId)
 
 #  define VLOG(unused)   ::Orthanc::Logging::InternalLogger             \
   (::Orthanc::Logging::LogLevel_TRACE,                                  \
    ::Orthanc::Logging::LogCategory_GENERIC, NULL /* no plugin */,       \
-   __ORTHANC_FILE__, __LINE__)
+   __ORTHANC_FILE__, __LINE__, NULL)
 
 #  define CLOG(level, category) ::Orthanc::Logging::InternalLogger      \
   (::Orthanc::Logging::LogLevel_ ## level,                              \
    ::Orthanc::Logging::LogCategory_ ## category, NULL /* no plugin */,  \
-   __ORTHANC_FILE__, __LINE__)
+   __ORTHANC_FILE__, __LINE__, NULL)
 
-#  define LOG_FROM_PLUGIN(level, category, pluginName, file, line)      \
-  ::Orthanc::Logging::InternalLogger(level, category, pluginName, file, line)
+#  define LOG_FROM_PLUGIN(level, category, pluginName, file, line, messageId)      \
+  ::Orthanc::Logging::InternalLogger(level, category, pluginName, file, line, messageId)
 
 #endif
 
@@ -305,14 +318,15 @@ namespace Orthanc
                      LogCategory category,
                      const char* pluginName /* ignored */,
                      const char* file  /* ignored */,
-                     int line  /* ignored */) :
+                     int line  /* ignored */,
+                     const char* messageId /* ignored */) :
         level_(level),
         category_(category)
       {
       }
 
       ~InternalLogger();
-      
+
       std::ostream& operator<< (const std::string& message)
       {
         return messageStream_ << message;
@@ -346,16 +360,18 @@ namespace Orthanc
       const char*                         file_;
       uint32_t                            line_;
       std::stringstream                   messageStream_;
+      const char*                         messageId_;
 
     public:
       InternalLogger(LogLevel level,
                      LogCategory category,
                      const char* pluginName,
                      const char* file,
-                     int line);
+                     int line,
+                     const char* messageId);
 
       ~InternalLogger();
-      
+
       std::ostream& operator<< (const std::string& message)
       {
         return messageStream_ << message;
@@ -377,7 +393,7 @@ namespace Orthanc
      * InitializePluginContext() was called.
      **/
     ORTHANC_PUBLIC void SetErrorWarnInfoLoggingStreams(std::ostream& errorStream,
-                                                       std::ostream& warningStream, 
+                                                       std::ostream& warningStream,
                                                        std::ostream& infoStream);
   }
 }

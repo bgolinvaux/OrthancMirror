@@ -63,7 +63,7 @@ namespace Orthanc
     Initialize(path);
   }
 
-  FilesystemHttpSender::FilesystemHttpSender(const boost::filesystem::path& path, 
+  FilesystemHttpSender::FilesystemHttpSender(const boost::filesystem::path& path,
                                              MimeType contentType)
   {
     SetContentType(contentType);
@@ -91,7 +91,7 @@ namespace Orthanc
 
     file_.read(&chunk_[0], static_cast<std::streamsize>(chunk_.size()));
 
-    if ((file_.flags() & std::istream::failbit) ||
+    if (file_.bad() ||
         file_.gcount() < 0)
     {
       throw OrthancException(ErrorCode_CorruptedFile);

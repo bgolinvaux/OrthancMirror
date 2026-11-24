@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Orthanc - A Lightweight, RESTful DICOM Store
 # Copyright (C) 2012-2016 Sebastien Jodogne, Medical Physics
@@ -49,11 +49,11 @@ for source in os.listdir(BASE):
         path = os.path.join(BASE, re.sub('.in$', '', source))
 
         content = {}
-        
+
         with open(path, 'r') as f:
             for definition in re.findall('#define (DER_OID_V_.+?)#define (DER_OID_SZ_.+?)extern const(.+?)$', f.read(), re.MULTILINE | re.DOTALL):
                 oid = definition[0].strip().split(' ')
-                
+
                 name = oid[0].replace('DER_OID_V_', '')
                 oid = oid[1:]
 

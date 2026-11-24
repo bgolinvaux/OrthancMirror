@@ -46,11 +46,12 @@ static std::string GetInstanceWorkerThreadName()
 namespace Orthanc
 {
   static const char* EXIT_WORKER_MESSAGE = "exit";
+  static const unsigned int WORKER_DEQUEUE_TIMEOUT_MS = 100;
 
-   ThreadedSetOfInstancesJob::ThreadedSetOfInstancesJob(ServerContext& context,
-                                                        bool hasPostProcessing,
-                                                        bool keepSource,
-                                                        size_t workersCount) :
+  ThreadedSetOfInstancesJob::ThreadedSetOfInstancesJob(ServerContext& context,
+                                                       bool hasPostProcessing,
+                                                       bool keepSource,
+                                                       size_t workersCount) :
     hasPostProcessing_(hasPostProcessing),
     started_(false),
     stopRequested_(false),
@@ -149,7 +150,7 @@ namespace Orthanc
       // No instances to handle: We're done
       return JobStepResult::Success();
     }
-    
+
     try
     {
       if (currentStep_ == ThreadedJobStep_NotStarted)
@@ -260,15 +261,33 @@ namespace Orthanc
 
     while (true)
     {
-      std::unique_ptr<SingleValueObject<std::string> > instanceId(dynamic_cast<SingleValueObject<std::string>*>(that->instancesToProcessQueue_.Dequeue(0)));
-      if (that->stopRequested_                // no lock(mutex) to access this variable, this is safe since it's just reading a boolean
-        || instanceId->GetValue() == EXIT_WORKER_MESSAGE)
+      std::unique_ptr<IDynamicObject> message(that->instancesToProcessQueue_.Dequeue(WORKER_DEQUEUE_TIMEOUT_MS));
+      if (that->stopRequested_)                // no lock(mutex) to access this variable, this is safe since it's just reading a boolean
+      {
+        return;
+      }
+
+      if (message.get() == NULL)
+      {
+        continue;  // timeout, nothing to process yet
+      }
+
+      const SingleValueObject<std::string>* instanceId = dynamic_cast<const SingleValueObject<std::string>*>(message.get());
+      if (instanceId == NULL)
+      {
+        LOG(ERROR) << "Unexpected message type in the instances queue";
+        that->SetErrorCode(ErrorCode_InternalError);
+        that->StopWorkers();
+        return;
+      }
+
+      if (instanceId->GetValue() == EXIT_WORKER_MESSAGE)
       {
         return;
       }
 
       bool processed = false;
-      
+
       try
       {
         processed = that->HandleInstance(instanceId->GetValue());
@@ -297,12 +316,12 @@ namespace Orthanc
 
       {
         boost::recursive_mutex::scoped_lock lock(that->mutex_);
-        
+
         that->processedInstances_.insert(instanceId->GetValue());
 
         if (!processed)
         {
-          that->failedInstances_.insert(instanceId->GetValue()); 
+          that->failedInstances_.insert(instanceId->GetValue());
         }
       }
 
@@ -313,7 +332,7 @@ namespace Orthanc
   size_t ThreadedSetOfInstancesJob::GetInstancesCount() const
   {
     boost::recursive_mutex::scoped_lock lock(mutex_);
-    
+
     return instancesToProcess_.size();
   }
 
@@ -429,14 +448,14 @@ namespace Orthanc
     std::string type;
     GetJobType(type);
     target[KEY_TYPE] = type;
-    
+
     target[KEY_PERMISSIVE] = permissive_;
     target[KEY_USER_DATA] = userData_;
     target[KEY_CURRENT_STEP] = static_cast<unsigned int>(currentStep_);
     target[KEY_DESCRIPTION] = description_;
     target[KEY_KEEP_SOURCE] = keepSource_;
     target[KEY_WORKERS_COUNT] = static_cast<unsigned int>(workersCount_);
-    
+
     SerializationToolbox::WriteSetOfStrings(target, instancesToProcess_, KEY_INSTANCES);
     SerializationToolbox::WriteSetOfStrings(target, failedInstances_, KEY_FAILED_INSTANCES);
     SerializeResources(target, parentResources_, false);
@@ -485,7 +504,7 @@ namespace Orthanc
     {
       SerializationToolbox::ReadMapOfResourcesAndTypes(parentResources_, source, KEY_RESOURCES);
     }
-    
+
     if (source.isMember(KEY_KEEP_SOURCE))
     {
       keepSource_ = SerializationToolbox::ReadBoolean(source, KEY_KEEP_SOURCE);
@@ -550,7 +569,7 @@ namespace Orthanc
     {
       size_t totalProgress = GetInstancesCount();
       size_t currentProgress = processedInstances_.size();
-      
+
       if (HasPostProcessingStep())
       {
         ++totalProgress;

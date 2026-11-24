@@ -98,7 +98,7 @@ namespace Orthanc
       StatementReference& GetCachedStatement(const StatementId& id,
                                              const char* sql);
 
-      bool DoesTableOrIndexExist(const char* name, 
+      bool DoesTableOrIndexExist(const char* name,
                                  const char* type) const;
 
       void DoRollback();
@@ -121,6 +121,8 @@ namespace Orthanc
 
       void FlushToDisk();
 
+      void Optimize(bool onlyIfStatsDontExists);
+
       IScalarFunction* Register(IScalarFunction* func);  // Takes the ownership of the function
 
       // Info querying -------------------------------------------------------------
@@ -134,7 +136,7 @@ namespace Orthanc
 
       // Returns true if the given index exists.
       bool DoesIndexExist(const char* index_name) const;
-    
+
       // Returns true if a column with the given name exists in the given table.
       bool DoesColumnExist(const char* table_name, const char* column_name) const;
 
@@ -164,7 +166,7 @@ namespace Orthanc
       // Diagnostics (for unit tests) ----------------------------------------------
 
       int ExecuteAndReturnErrorCode(const char* sql);
-    
+
       bool HasCachedStatement(const StatementId& id) const;
 
       int GetTransactionNesting() const;
@@ -173,7 +175,7 @@ namespace Orthanc
 
       bool BeginTransaction();
       void RollbackTransaction();
-      bool CommitTransaction();      
+      bool CommitTransaction();
     };
   }
 }

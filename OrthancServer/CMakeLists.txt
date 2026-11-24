@@ -264,7 +264,7 @@ endif()
 #####################################################################
 
 set(ORTHANC_EMBEDDED_FILES
-  DICOM_CONFORMANCE_STATEMENT       ${CMAKE_SOURCE_DIR}/Resources/DicomConformanceStatement.txt
+  DICOM_CONFORMANCE                 ${CMAKE_SOURCE_DIR}/Resources/DicomConformance.txt
   FONT_UBUNTU_MONO_BOLD_16          ${CMAKE_SOURCE_DIR}/Resources/Fonts/UbuntuMonoBold-16.json
   LUA_TOOLBOX                       ${CMAKE_SOURCE_DIR}/Resources/Toolbox.lua
   PREPARE_DATABASE                  ${CMAKE_SOURCE_DIR}/Sources/Database/PrepareDatabase.sql
@@ -277,6 +277,8 @@ set(ORTHANC_EMBEDDED_FILES
   INSTALL_KEY_VALUE_STORES_AND_QUEUES ${CMAKE_SOURCE_DIR}/Sources/Database/InstallKeyValueStoresAndQueues.sql
   ADD_TIMEOUT_TO_QUEUES             ${CMAKE_SOURCE_DIR}/Sources/Database/AddTimeoutToQueues.sql
   INSTALL_DICOM_IDENTIFIERS_INDEX_3 ${CMAKE_SOURCE_DIR}/Sources/Database/InstallDicomIdentifiersIndex3.sql
+  MAKE_PUBLIC_INDEX_UNIQUE          ${CMAKE_SOURCE_DIR}/Sources/Database/MakePublicIndexUnique.sql
+  INSTALL_ATTACHED_FILES_UUID_INDEX ${CMAKE_SOURCE_DIR}/Sources/Database/InstallAttachedFilesUuidIndex.sql
   )
 
 if (STANDALONE_BUILD)
@@ -553,8 +555,8 @@ if (ENABLE_PLUGINS AND
   
   if (BUILD_MULTITENANT_DICOM)
     list(APPEND PLUGINS_DEPENDENCIES_SOURCES
-      ${DCMTK_SOURCES}
       ${OPENSSL_SOURCES}
+      ${DCMTK_SOURCES}
       ${LIBJPEG_SOURCES}
       ${LIBPNG_SOURCES}
       )

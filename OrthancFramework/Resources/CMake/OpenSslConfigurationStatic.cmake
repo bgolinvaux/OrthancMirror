@@ -20,14 +20,16 @@
 # <http://www.gnu.org/licenses/>.
 
 
+find_package(Perl REQUIRED)
+
 set(OPENSSL_VERSION_MAJOR 3)
-set(OPENSSL_VERSION_MINOR 1)
-set(OPENSSL_VERSION_PATCH 4)
+set(OPENSSL_VERSION_MINOR 5)
+set(OPENSSL_VERSION_PATCH 9)
 set(OPENSSL_VERSION_PRE_RELEASE "")
 set(OPENSSL_VERSION_FULL "${OPENSSL_VERSION_MAJOR}.${OPENSSL_VERSION_MINOR}.${OPENSSL_VERSION_PATCH}${OPENSSL_VERSION_PRE_RELEASE}")
 SET(OPENSSL_SOURCES_DIR ${CMAKE_BINARY_DIR}/openssl-${OPENSSL_VERSION_FULL})
-SET(OPENSSL_URL "https://orthanc.uclouvain.be/downloads/third-party-downloads/openssl-${OPENSSL_VERSION_FULL}.tar.gz")
-SET(OPENSSL_MD5 "653ad58812c751b887e8ec37e02bba70")
+SET(OPENSSL_URL "${THIRD_PARTY_DOWNLOADS_ROOT_URL}/openssl-${OPENSSL_VERSION_FULL}.tar.gz")
+SET(OPENSSL_MD5 "382c33039018809e6351539e9bdcd509")
 
 if (IS_DIRECTORY "${OPENSSL_SOURCES_DIR}")
   set(FirstRun OFF)
@@ -51,90 +53,179 @@ if (FirstRun)
     message(FATAL_ERROR "Error while patching a file")
   endif()
 
+
+  # Execute the "config" script from the OpenSSL source distribution
+  if ("${CMAKE_SYSTEM_VERSION}" STREQUAL "LinuxStandardBase")
+    set(Options --with-rand-seed=devrandom linux-x86_64)
+  elseif (MSVC)
+    # This is Visual Studio
+    if (CMAKE_SIZEOF_VOID_P EQUAL 4)
+      set(Options VC-WIN32)
+    else()
+      set(Options VC-WIN64A)
+    endif()
+  elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" AND CMAKE_COMPILER_IS_GNUCXX)
+    # This is MinGW
+    if (CMAKE_SIZEOF_VOID_P EQUAL 4)
+      set(Options mingw)
+    else()
+      set(Options mingw64)
+    endif()
+  else()
+    # Generic system
+    set(Options)
+  endif()
+
   execute_process(
-    COMMAND ${PYTHON_EXECUTABLE}
-    ${CMAKE_CURRENT_LIST_DIR}/../Patches/OpenSSL-ConfigureHeaders.py
-    "${OPENSSL_SOURCES_DIR}"
+    COMMAND ${PERL_EXECUTABLE}
+    Configure no-asm ${Options}
+    WORKING_DIRECTORY ${OPENSSL_SOURCES_DIR}
     RESULT_VARIABLE Failure
     )
 
   if (Failure)
-    message(FATAL_ERROR "Error while configuring the OpenSSL headers")
+    message(FATAL_ERROR "Error while configuring OpenSSL using Perl")
   endif()
 
-  file(WRITE ${OPENSSL_SOURCES_DIR}/include/openssl/opensslv.h "")
-  file(WRITE ${OPENSSL_SOURCES_DIR}/include/crypto/bn_conf.h "")
-  file(WRITE ${OPENSSL_SOURCES_DIR}/include/crypto/dso_conf.h "")
 
-  file(WRITE ${OPENSSL_SOURCES_DIR}/crypto/buildinf.h "
-#define DATE \"\"
-#define PLATFORM \"\"
-#define compiler_flags \"\"
-")
+  # Create ${GENERATED_MANDATORY} targets from the Makefile of OpenSSL
+  execute_process(
+    COMMAND ${PERL_EXECUTABLE}
+    util/mkbuildinf.pl "Orthanc static ${CMAKE_SYSTEM_NAME}" ""
+    WORKING_DIRECTORY ${OPENSSL_SOURCES_DIR}
+    OUTPUT_FILE crypto/buildinf.h
+    RESULT_VARIABLE Failure
+    ERROR_VARIABLE FailureOutput
+    )
+
+  if (NOT Failure EQUAL 0)
+    message(FATAL_ERROR "Perl failed with exit code ${Failure}: ${FailureOutput}")
+  endif()
+
+
+  foreach(config_file
+      crypto/params_idx.c
+      include/internal/param_names.h
+      include/openssl/core_names.h
+      )
+    execute_process(
+      COMMAND ${PERL_EXECUTABLE} -I. -Iutil/perl -Mconfigdata -MOpenSSL::paramnames
+      util/dofile.pl ${config_file}.in
+      WORKING_DIRECTORY ${OPENSSL_SOURCES_DIR}
+      OUTPUT_FILE ${config_file}
+      RESULT_VARIABLE Failure
+      ERROR_VARIABLE FailureOutput
+      )
+
+    if (NOT Failure EQUAL 0)
+      message(FATAL_ERROR "Perl failed on ${config_file} with exit code ${Failure}: ${FailureOutput}")
+    endif()
+  endforeach()
+
+
+  foreach(config_file
+      include/crypto/bn_conf.h
+      include/crypto/dso_conf.h
+      include/openssl/asn1.h
+      include/openssl/asn1t.h
+      include/openssl/bio.h
+      include/openssl/cmp.h
+      include/openssl/cms.h
+      include/openssl/comp.h
+      include/openssl/conf.h
+      include/openssl/crmf.h
+      include/openssl/crypto.h
+      include/openssl/ct.h
+      include/openssl/err.h
+      include/openssl/ess.h
+      include/openssl/fipskey.h
+      include/openssl/lhash.h
+      include/openssl/ocsp.h
+      include/openssl/opensslv.h
+      include/openssl/pkcs12.h
+      include/openssl/pkcs7.h
+      include/openssl/safestack.h
+      include/openssl/srp.h
+      include/openssl/ssl.h
+      include/openssl/ui.h
+      include/openssl/x509.h
+      include/openssl/x509_acert.h
+      include/openssl/x509_vfy.h
+      include/openssl/x509v3.h
+      )
+    execute_process(
+      COMMAND ${PERL_EXECUTABLE} -I. -Mconfigdata
+      util/dofile.pl ${config_file}.in
+      WORKING_DIRECTORY ${OPENSSL_SOURCES_DIR}
+      OUTPUT_FILE ${config_file}
+      RESULT_VARIABLE Failure
+      ERROR_VARIABLE FailureOutput
+      )
+
+    if (NOT Failure EQUAL 0)
+      message(FATAL_ERROR "Perl failed on ${config_file} with exit code ${Failure}: ${FailureOutput}")
+    endif()
+  endforeach()
+
+
+  foreach(config_file
+      providers/common/der/der_digests_gen.c
+      providers/common/der/der_dsa_gen.c
+      providers/common/der/der_ec_gen.c
+      providers/common/der/der_ecx_gen.c
+      providers/common/der/der_ml_dsa_gen.c
+      providers/common/der/der_rsa_gen.c
+      providers/common/der/der_slh_dsa_gen.c
+      providers/common/der/der_sm2_gen.c
+      providers/common/der/der_wrap_gen.c
+      providers/common/include/prov/der_digests.h
+      providers/common/include/prov/der_dsa.h
+      providers/common/include/prov/der_ec.h
+      providers/common/include/prov/der_ecx.h
+      providers/common/include/prov/der_ml_dsa.h
+      providers/common/include/prov/der_rsa.h
+      providers/common/include/prov/der_slh_dsa.h
+      providers/common/include/prov/der_sm2.h
+      providers/common/include/prov/der_wrap.h
+      )
+    execute_process(
+      COMMAND ${PERL_EXECUTABLE} -I. -Iproviders/common/der -Mconfigdata -Moids_to_c
+      util/dofile.pl ${config_file}.in
+      WORKING_DIRECTORY ${OPENSSL_SOURCES_DIR}
+      OUTPUT_FILE ${config_file}
+      RESULT_VARIABLE Failure
+      ERROR_VARIABLE FailureOutput
+      )
+
+    if (NOT Failure EQUAL 0)
+      message(FATAL_ERROR "Perl failed on ${config_file} with exit code ${Failure}: ${FailureOutput}")
+    endif()
+  endforeach()
 
 else()
   message("The patches for OpenSSL have already been applied")
 endif()
 
 
-if (OPENSSL_VERSION_PRE_RELEASE STREQUAL "")
-  set(VERSION_VERSION_OFFSET 0)
-else()
-  set(VERSION_VERSION_OFFSET 15)
-endif()
-
-math(EXPR OPENSSL_CONFIGURED_API "${OPENSSL_VERSION_MAJOR} * 10000 + ${OPENSSL_VERSION_MINOR} * 100")
-
-# This macro is normally defined in "opensslv.h.in"
-math(EXPR OPENSSL_VERSION_NUMBER "(${OPENSSL_VERSION_MAJOR} << 28) + (${OPENSSL_VERSION_MINOR} << 20) + (${OPENSSL_VERSION_PATCH} << 4) + ${VERSION_VERSION_OFFSET}")
-
-list(GET CMAKE_FIND_LIBRARY_SUFFIXES 0 OPENSSL_DSO_EXTENSION)
 
 add_definitions(
-  -DOPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR}
-  -DOPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR}
-  -DOPENSSL_VERSION_PATCH=${OPENSSL_VERSION_PATCH}
-  -DOPENSSL_CONFIGURED_API=${OPENSSL_CONFIGURED_API}
-  -DOPENSSL_VERSION_NUMBER=${OPENSSL_VERSION_NUMBER}
-  -DOPENSSL_VERSION_PRE_RELEASE="${OPENSSL_VERSION_PRE_RELEASE}"
-  -DOPENSSL_VERSION_BUILD_METADATA=""
-  -DOPENSSL_VERSION_TEXT="OpenSSL ${OPENSSL_VERSION_FULL}"
-  -DOPENSSL_VERSION_STR="${OPENSSL_VERSION_MAJOR}.${OPENSSL_VERSION_MINOR}.${OPENSSL_VERSION_PATCH}"
-  -DOPENSSL_FULL_VERSION_STR="${OPENSSL_VERSION_FULL}"
-  -DDSO_EXTENSION="${OPENSSL_DSO_EXTENSION}"
-
+  -DENGINESDIR="/usr/local/lib64/engines-3"
+  -DMODULESDIR="/usr/local/lib64/ossl-modules"
   -DOPENSSLDIR="/usr/local/ssl"
-  -DMODULESDIR=""  # TODO
-  
   -DOPENSSL_BUILDING_OPENSSL
-  -DOPENSSL_THREADS
-  -DOPENSSL_IA32_SSE2
-  
-  -DOPENSSL_NO_AFALGENG
-  -DOPENSSL_NO_ASM
-  -DOPENSSL_NO_CHACHA  # Necessary for VC2015-64 since openssl-3.0.1
-  -DOPENSSL_NO_DEVCRYPTOENG
-  -DOPENSSL_NO_DYNAMIC_ENGINE
-  -DOPENSSL_NO_EC_NISTP_64_GCC_128
-  -DOPENSSL_NO_GOST
-  -DOPENSSL_NO_RFC3779
-  -DOPENSSL_NO_SCTP
 
-  -DOPENSSL_NO_KTLS  # TODO ?
+  #-DL_ENDIAN
+  #-DOPENSSL_PIC
+  #-DOPENSSL_USE_NODELETE
   )
 
 
 include_directories(
   BEFORE
   ${OPENSSL_SOURCES_DIR}
-  ${OPENSSL_SOURCES_DIR}/crypto/asn1
-  ${OPENSSL_SOURCES_DIR}/crypto/ec/curve448
-  ${OPENSSL_SOURCES_DIR}/crypto/ec/curve448/arch_32
-  ${OPENSSL_SOURCES_DIR}/crypto/evp
-  ${OPENSSL_SOURCES_DIR}/crypto/include
-  ${OPENSSL_SOURCES_DIR}/crypto/modes
   ${OPENSSL_SOURCES_DIR}/include
   ${OPENSSL_SOURCES_DIR}/providers/common/include
+  ${OPENSSL_SOURCES_DIR}/providers/fips/include
   ${OPENSSL_SOURCES_DIR}/providers/implementations/include
   )
 
@@ -151,13 +242,17 @@ set(OPENSSL_SOURCES_SUBDIRS
   # ${OPENSSL_SOURCES_DIR}/crypto/ec/asm
   # ${OPENSSL_SOURCES_DIR}/crypto/md5/asm
   # ${OPENSSL_SOURCES_DIR}/crypto/modes/asm
+  # ${OPENSSL_SOURCES_DIR}/crypto/perlasm
   # ${OPENSSL_SOURCES_DIR}/crypto/poly1305/asm
   # ${OPENSSL_SOURCES_DIR}/crypto/rc4/asm
   # ${OPENSSL_SOURCES_DIR}/crypto/rc5/asm
   # ${OPENSSL_SOURCES_DIR}/crypto/ripemd/asm
   # ${OPENSSL_SOURCES_DIR}/crypto/sha/asm
+  # ${OPENSSL_SOURCES_DIR}/crypto/sm3/asm
+  # ${OPENSSL_SOURCES_DIR}/crypto/sm4/asm
   # ${OPENSSL_SOURCES_DIR}/crypto/whrlpool/asm
 
+  # ${OPENSSL_SOURCES_DIR}/crypto/md2
   ${OPENSSL_SOURCES_DIR}/crypto
   ${OPENSSL_SOURCES_DIR}/crypto/aes
   ${OPENSSL_SOURCES_DIR}/crypto/aria
@@ -182,35 +277,33 @@ set(OPENSSL_SOURCES_SUBDIRS
   ${OPENSSL_SOURCES_DIR}/crypto/dh
   ${OPENSSL_SOURCES_DIR}/crypto/dsa
   ${OPENSSL_SOURCES_DIR}/crypto/dso
-  ${OPENSSL_SOURCES_DIR}/crypto/ec
-  ${OPENSSL_SOURCES_DIR}/crypto/ec/curve448
-  ${OPENSSL_SOURCES_DIR}/crypto/ec/curve448/arch_32
-  ${OPENSSL_SOURCES_DIR}/crypto/ec/curve448/arch_64
   ${OPENSSL_SOURCES_DIR}/crypto/encode_decode
-  ${OPENSSL_SOURCES_DIR}/crypto/engine
   ${OPENSSL_SOURCES_DIR}/crypto/err
   ${OPENSSL_SOURCES_DIR}/crypto/ess
   ${OPENSSL_SOURCES_DIR}/crypto/evp
   ${OPENSSL_SOURCES_DIR}/crypto/ffc
+  ${OPENSSL_SOURCES_DIR}/crypto/hashtable
   ${OPENSSL_SOURCES_DIR}/crypto/hmac
+  ${OPENSSL_SOURCES_DIR}/crypto/hpke
   ${OPENSSL_SOURCES_DIR}/crypto/http
   ${OPENSSL_SOURCES_DIR}/crypto/idea
   ${OPENSSL_SOURCES_DIR}/crypto/kdf
   ${OPENSSL_SOURCES_DIR}/crypto/lhash
-  ${OPENSSL_SOURCES_DIR}/crypto/md2
   ${OPENSSL_SOURCES_DIR}/crypto/md4
   ${OPENSSL_SOURCES_DIR}/crypto/md5
   ${OPENSSL_SOURCES_DIR}/crypto/mdc2
+  ${OPENSSL_SOURCES_DIR}/crypto/ml_dsa
+  ${OPENSSL_SOURCES_DIR}/crypto/ml_kem
   ${OPENSSL_SOURCES_DIR}/crypto/modes
   ${OPENSSL_SOURCES_DIR}/crypto/objects
   ${OPENSSL_SOURCES_DIR}/crypto/ocsp
   ${OPENSSL_SOURCES_DIR}/crypto/pem
-  ${OPENSSL_SOURCES_DIR}/crypto/perlasm
   ${OPENSSL_SOURCES_DIR}/crypto/pkcs12
   ${OPENSSL_SOURCES_DIR}/crypto/pkcs7
   ${OPENSSL_SOURCES_DIR}/crypto/poly1305
   ${OPENSSL_SOURCES_DIR}/crypto/property
   ${OPENSSL_SOURCES_DIR}/crypto/rand
+  ${OPENSSL_SOURCES_DIR}/crypto/rbtree
   ${OPENSSL_SOURCES_DIR}/crypto/rc2
   ${OPENSSL_SOURCES_DIR}/crypto/rc4
   ${OPENSSL_SOURCES_DIR}/crypto/rc5
@@ -219,12 +312,15 @@ set(OPENSSL_SOURCES_SUBDIRS
   ${OPENSSL_SOURCES_DIR}/crypto/seed
   ${OPENSSL_SOURCES_DIR}/crypto/sha
   ${OPENSSL_SOURCES_DIR}/crypto/siphash
+  ${OPENSSL_SOURCES_DIR}/crypto/slh_dsa
   ${OPENSSL_SOURCES_DIR}/crypto/sm2
   ${OPENSSL_SOURCES_DIR}/crypto/sm3
   ${OPENSSL_SOURCES_DIR}/crypto/sm4
   ${OPENSSL_SOURCES_DIR}/crypto/srp
   ${OPENSSL_SOURCES_DIR}/crypto/stack
   ${OPENSSL_SOURCES_DIR}/crypto/store
+  ${OPENSSL_SOURCES_DIR}/crypto/thread
+  ${OPENSSL_SOURCES_DIR}/crypto/thread/arch
   ${OPENSSL_SOURCES_DIR}/crypto/ts
   ${OPENSSL_SOURCES_DIR}/crypto/txt_db
   ${OPENSSL_SOURCES_DIR}/crypto/ui
@@ -232,35 +328,38 @@ set(OPENSSL_SOURCES_SUBDIRS
   ${OPENSSL_SOURCES_DIR}/crypto/x509
 
   # ${OPENSSL_SOURCES_DIR}/providers/implementations/rands/seeding  # OS-specific
+  # ${OPENSSL_SOURCES_DIR}/providers/fips
   ${OPENSSL_SOURCES_DIR}/providers
   ${OPENSSL_SOURCES_DIR}/providers/common
   ${OPENSSL_SOURCES_DIR}/providers/common/der
+  ${OPENSSL_SOURCES_DIR}/providers/implementations
   ${OPENSSL_SOURCES_DIR}/providers/implementations/asymciphers
   ${OPENSSL_SOURCES_DIR}/providers/implementations/ciphers
   ${OPENSSL_SOURCES_DIR}/providers/implementations/digests
   ${OPENSSL_SOURCES_DIR}/providers/implementations/encode_decode
   ${OPENSSL_SOURCES_DIR}/providers/implementations/exchange
+  ${OPENSSL_SOURCES_DIR}/providers/implementations/include
+  ${OPENSSL_SOURCES_DIR}/providers/implementations/include/prov
   ${OPENSSL_SOURCES_DIR}/providers/implementations/kdfs
   ${OPENSSL_SOURCES_DIR}/providers/implementations/kem
   ${OPENSSL_SOURCES_DIR}/providers/implementations/keymgmt
   ${OPENSSL_SOURCES_DIR}/providers/implementations/macs
   ${OPENSSL_SOURCES_DIR}/providers/implementations/rands
   ${OPENSSL_SOURCES_DIR}/providers/implementations/signature
+  ${OPENSSL_SOURCES_DIR}/providers/implementations/skeymgmt
   ${OPENSSL_SOURCES_DIR}/providers/implementations/storemgmt
 
   ${OPENSSL_SOURCES_DIR}/ssl
+  ${OPENSSL_SOURCES_DIR}/ssl/quic
   ${OPENSSL_SOURCES_DIR}/ssl/record
+  ${OPENSSL_SOURCES_DIR}/ssl/record/methods
+  ${OPENSSL_SOURCES_DIR}/ssl/rio
   ${OPENSSL_SOURCES_DIR}/ssl/statem
   )
 
 if (ENABLE_OPENSSL_ENGINES)
-  add_definitions(
-    #-DENGINESDIR="/usr/local/lib/engines-1.1"  # On GNU/Linux
-    -DENGINESDIR="."
-    )
-
   list(APPEND OPENSSL_SOURCES_SUBDIRS
-    ${OPENSSL_SOURCES_DIR}/engines
+    # ${OPENSSL_SOURCES_DIR}/engines   # Removed in Orthanc 1.13.1
     ${OPENSSL_SOURCES_DIR}/crypto/engine
     )
 else()
@@ -274,9 +373,11 @@ list(APPEND OPENSSL_SOURCES_SUBDIRS
   # command). Until Orthanc <= 1.4.1, these features were only
   # enabled if ENABLE_PKCS11 support was set to "ON".
   # https://groups.google.com/d/msg/orthanc-users/2l-bhYIMEWg/oMmK33bYBgAJ
+
   ${OPENSSL_SOURCES_DIR}/crypto/ec
-  ${OPENSSL_SOURCES_DIR}/crypto/ecdh
-  ${OPENSSL_SOURCES_DIR}/crypto/ecdsa
+  ${OPENSSL_SOURCES_DIR}/crypto/ec/curve448
+  ${OPENSSL_SOURCES_DIR}/crypto/ec/curve448/arch_32
+  ${OPENSSL_SOURCES_DIR}/crypto/ec/curve448/arch_64
   )
 
 foreach(d ${OPENSSL_SOURCES_SUBDIRS})
@@ -293,36 +394,42 @@ list(REMOVE_ITEM OPENSSL_SOURCES
   ${OPENSSL_SOURCES_DIR}/crypto/LPdir_win.c
   ${OPENSSL_SOURCES_DIR}/crypto/LPdir_win32.c
   ${OPENSSL_SOURCES_DIR}/crypto/LPdir_wince.c
-  ${OPENSSL_SOURCES_DIR}/crypto/aes/aes_x86core.c
+  ${OPENSSL_SOURCES_DIR}/crypto/bn/bn_ppc.c
+  ${OPENSSL_SOURCES_DIR}/crypto/bn/bn_sparc.c
+  ${OPENSSL_SOURCES_DIR}/crypto/chacha/chacha_ppc.c
+  ${OPENSSL_SOURCES_DIR}/crypto/chacha/chacha_riscv.c
   ${OPENSSL_SOURCES_DIR}/crypto/des/ncbc_enc.c
   ${OPENSSL_SOURCES_DIR}/crypto/ec/ecp_nistp224.c
   ${OPENSSL_SOURCES_DIR}/crypto/ec/ecp_nistp256.c
+  ${OPENSSL_SOURCES_DIR}/crypto/ec/ecp_nistp384.c
   ${OPENSSL_SOURCES_DIR}/crypto/ec/ecp_nistp521.c
   ${OPENSSL_SOURCES_DIR}/crypto/ec/ecp_nistz256.c
   ${OPENSSL_SOURCES_DIR}/crypto/ec/ecp_nistz256_table.c
-  ${OPENSSL_SOURCES_DIR}/crypto/ec/ecp_s390x_nistp.c
-  ${OPENSSL_SOURCES_DIR}/crypto/ec/ecx_s390x.c
-  ${OPENSSL_SOURCES_DIR}/crypto/poly1305/poly1305_base2_44.c
-  ${OPENSSL_SOURCES_DIR}/crypto/rsa/rsa_acvp_test_params.c
-  ${OPENSSL_SOURCES_DIR}/engines/e_devcrypto.c
-  ${OPENSSL_SOURCES_DIR}/engines/e_loader_attic.c
-  ${OPENSSL_SOURCES_DIR}/providers/common/securitycheck_fips.c
-  ${OPENSSL_SOURCES_DIR}/providers/implementations/macs/blake2_mac_impl.c
-  
-  ${OPENSSL_SOURCES_DIR}/engines/e_afalg.c  # Fails on OS X and Visual Studio
-  ${OPENSSL_SOURCES_DIR}/crypto/poly1305/poly1305_ieee754.c  # Fails on Visual Studio
-
-  ${OPENSSL_SOURCES_DIR}/ssl/ktls.c   # TODO ?
-
-  # Disable PowerPC sources
-  ${OPENSSL_SOURCES_DIR}/crypto/bn/bn_ppc.c
-  ${OPENSSL_SOURCES_DIR}/crypto/chacha/chacha_ppc.c
   ${OPENSSL_SOURCES_DIR}/crypto/ec/ecp_ppc.c
+  ${OPENSSL_SOURCES_DIR}/crypto/ec/ecp_s390x_nistp.c
+  ${OPENSSL_SOURCES_DIR}/crypto/ec/ecp_sm2p256.c
+  ${OPENSSL_SOURCES_DIR}/crypto/ec/ecx_s390x.c
+  ${OPENSSL_SOURCES_DIR}/crypto/evp/legacy_md2.c
+  ${OPENSSL_SOURCES_DIR}/crypto/poly1305/poly1305_base2_44.c
   ${OPENSSL_SOURCES_DIR}/crypto/poly1305/poly1305_ppc.c
+  ${OPENSSL_SOURCES_DIR}/crypto/rc5/rc5_ecb.c
+  ${OPENSSL_SOURCES_DIR}/crypto/rc5/rc5_enc.c
+  ${OPENSSL_SOURCES_DIR}/crypto/rc5/rc5_skey.c
+  ${OPENSSL_SOURCES_DIR}/crypto/rc5/rc5cfb64.c
+  ${OPENSSL_SOURCES_DIR}/crypto/rc5/rc5ofb64.c
+  ${OPENSSL_SOURCES_DIR}/crypto/rsa/rsa_acvp_test_params.c
   ${OPENSSL_SOURCES_DIR}/crypto/sha/sha_ppc.c
+  ${OPENSSL_SOURCES_DIR}/crypto/sm3/sm3_riscv.c
+  ${OPENSSL_SOURCES_DIR}/providers/common/securitycheck_fips.c
+  ${OPENSSL_SOURCES_DIR}/providers/implementations/ciphers/cipher_rc5.c
+  ${OPENSSL_SOURCES_DIR}/providers/implementations/ciphers/cipher_rc5_hw.c
+  ${OPENSSL_SOURCES_DIR}/providers/implementations/digests/md2_prov.c
+  ${OPENSSL_SOURCES_DIR}/providers/implementations/macs/blake2_mac_impl.c
+  ${OPENSSL_SOURCES_DIR}/ssl/record/methods/ktls_meth.c
 
-  # Disable SPARC sources
-  ${OPENSSL_SOURCES_DIR}/crypto/bn/bn_sparc.c
+  ${OPENSSL_SOURCES_DIR}/crypto/poly1305/poly1305_ieee754.c  # Fails on Visual Studio
+  ${OPENSSL_SOURCES_DIR}/crypto/sha/sha_riscv.c  # Fails on LSB
+  ${OPENSSL_SOURCES_DIR}/providers/legacyprov.c  # Fails on LSB
 
   # Disable CPUID for non-x86 platforms
   ${OPENSSL_SOURCES_DIR}/crypto/armcap.c
@@ -334,82 +441,29 @@ list(REMOVE_ITEM OPENSSL_SOURCES
   )
 
 
+
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux" OR
     ${CMAKE_SYSTEM_NAME} STREQUAL "kFreeBSD" OR
     ${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR
     ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD" OR
     APPLE)
   list(APPEND OPENSSL_SOURCES
+    ${OPENSSL_SOURCES_DIR}/crypto/thread/arch/thread_posix.c
     ${OPENSSL_SOURCES_DIR}/providers/implementations/rands/seeding/rand_unix.c
     )
-elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
-  list(APPEND OPENSSL_SOURCES
-    ${OPENSSL_SOURCES_DIR}/providers/implementations/rands/seeding/rand_win.c
-    )  
-endif()
-  
-
-# Check out "${OPENSSL_SOURCES_DIR}/Configurations/README.md": "This
-# is default if no option is specified, it works on any supported
-# system." It is mandatory to define it as a macro, as it is used by
-# all the source files that include OpenSSL (e.g. "Core/Toolbox.cpp"
-# or curl)
-add_definitions(-DTHIRTY_TWO_BIT)
-
-
-if (NOT CMAKE_COMPILER_IS_GNUCXX OR
-    "${CMAKE_SYSTEM_NAME}" STREQUAL "Windows" OR
-    "${CMAKE_SYSTEM_VERSION}" STREQUAL "LinuxStandardBase")
-  # Disable the use of a gcc extension, that is neither available on
-  # MinGW, nor on LSB
-  add_definitions(
-    -DOPENSSL_NO_CRYPTO_MDEBUG_BACKTRACE
+  list(REMOVE_ITEM OPENSSL_SOURCES
+    ${OPENSSL_SOURCES_DIR}/providers/implementations/storemgmt/winstore_store.c
     )
-endif()
 
-
-if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
-  set(OPENSSL_DEFINITIONS
-    "${OPENSSL_DEFINITIONS};OPENSSL_SYSNAME_WIN32;SO_WIN32;WIN32_LEAN_AND_MEAN;L_ENDIAN;NO_WINDOWS_BRAINDEATH")
-  
-  if (ENABLE_OPENSSL_ENGINES)
-    link_libraries(crypt32)
+  if ("${CMAKE_SYSTEM_VERSION}" STREQUAL "LinuxStandardBase")
+    add_definitions(-DHAVE_MADVISE=0)
   endif()
 
-  add_definitions(
-    -DOPENSSL_RAND_SEED_OS  # ${OPENSSL_SOURCES_DIR}/crypto/rand/rand_win.c
+elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
+  list(APPEND OPENSSL_SOURCES
+    ${OPENSSL_SOURCES_DIR}/crypto/thread/arch/thread_win.c
+    ${OPENSSL_SOURCES_DIR}/providers/implementations/rands/seeding/rand_win.c
     )
- 
-elseif ("${CMAKE_SYSTEM_VERSION}" STREQUAL "LinuxStandardBase")
-  add_definitions(
-    # In order for "crypto/mem_sec.c" to compile on LSB
-    -DOPENSSL_NO_SECURE_MEMORY
+  link_libraries(crypt32)
 
-    # The "OPENSSL_RAND_SEED_OS" value implies a syscall() to
-    # "__NR_getrandom" (i.e. system call "getentropy(2)") in
-    # "rand_unix.c", which is not available in LSB.
-    -DOPENSSL_RAND_SEED_DEVRANDOM
-
-    # If "OPENSSL_NO_ERR" is not defined, the PostgreSQL plugin
-    # crashes with segmentation fault in function
-    # "build_SYS_str_reasons()", that is called from
-    # "OPENSSL_init_ssl()"
-    # https://orthanc.uclouvain.be/bugs/show_bug.cgi?id=193
-    -DOPENSSL_NO_ERR
-    )
-
-else()
-  # Fixes error "OpenSSL error: error:2406C06E:random number
-  # generator:RAND_DRBG_instantiate:error retrieving entropy" that was
-  # present in Orthanc 1.6.0, if statically linking on Ubuntu 18.04
-  add_definitions(
-    -DOPENSSL_RAND_SEED_OS
-    )
 endif()
-
-
-set_source_files_properties(
-  ${OPENSSL_SOURCES}
-    PROPERTIES COMPILE_DEFINITIONS
-    "${OPENSSL_DEFINITIONS};DSO_NONE"
-    )

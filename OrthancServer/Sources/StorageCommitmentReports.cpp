@@ -10,7 +10,7 @@
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -41,6 +41,27 @@ namespace Orthanc
     }
   }
 
+  void StorageCommitmentReports::Report::AddRequestedInstances(const std::vector<std::string>& sopClassesUids,
+                                                               const std::vector<std::string>& sopInstancesUids)
+  {
+    if (isComplete_)
+    {
+      throw OrthancException(ErrorCode_BadSequenceOfCalls);
+    }
+
+    if (sopClassesUids.size() != sopInstancesUids.size())
+    {
+      throw OrthancException(ErrorCode_InternalError, "SOPClassesUIDs & SOPInstancesUIDs size mismatch");
+    }
+
+    for (size_t i = 0; i < sopClassesUids.size(); ++i)
+    {
+      requetsedInstances_[sopInstancesUids[i]] = sopClassesUids[i];
+    }
+
+  }
+
+
   void StorageCommitmentReports::Report::AddSuccess(const std::string& sopClassUid,
                                                     const std::string& sopInstanceUid)
   {
@@ -63,7 +84,7 @@ namespace Orthanc
   {
     if (isComplete_)
     {
-      throw OrthancException(ErrorCode_BadSequenceOfCalls);
+      THROW_WITH_FILE_AND_LINE_INFO(ErrorCode_BadSequenceOfCalls);
     }
     else
     {
@@ -75,7 +96,7 @@ namespace Orthanc
     }
   }
 
-  
+
   StorageCommitmentReports::Report::Status StorageCommitmentReports::Report::GetStatus() const
   {
     if (!isComplete_)
@@ -104,12 +125,12 @@ namespace Orthanc
     static const char* const FIELD_SUCCESS = "Success";
     static const char* const FIELD_FAILURES = "Failures";
 
-    
+
     json = Json::objectValue;
     json[FIELD_REMOTE_AET] = remoteAet_;
 
     bool pending;
-    
+
     switch (GetStatus())
     {
       case Status_Pending:
@@ -180,6 +201,12 @@ namespace Orthanc
   }
 
 
+  const std::map<std::string, std::string>& StorageCommitmentReports::Report::GetRequestedInstancesAndSopClasses() const
+  {
+    return requetsedInstances_;
+  }
+
+
   StorageCommitmentReports::~StorageCommitmentReports()
   {
     while (!content_.IsEmpty())
@@ -200,12 +227,12 @@ namespace Orthanc
     }
   }
 
-  
+
   void StorageCommitmentReports::Store(const std::string& transactionUid,
                                        Report* report)
   {
     std::unique_ptr<Report> protection(report);
-    
+
     boost::mutex::scoped_lock lock(mutex_);
 
     {
@@ -226,7 +253,7 @@ namespace Orthanc
         content_.GetSize() == maxSize_)
     {
       assert(!content_.IsEmpty());
-      
+
       Report* oldest = NULL;
       content_.RemoveOldest(oldest);
 

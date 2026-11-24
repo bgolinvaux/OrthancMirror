@@ -10,7 +10,7 @@
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -211,7 +211,7 @@ namespace Orthanc
   {
     for (size_t j = 0; j < s.size(); j++)
     {
-      if (!isalnum(s[j]) && 
+      if (!isalnum(s[j]) &&
           s[j] != '-' && s[j] != '_')
       {
         throw OrthancException(ErrorCode_BadFileFormat,
@@ -341,18 +341,18 @@ namespace Orthanc
         if (!source[name].isUInt())
         {
           throw OrthancException(ErrorCode_BadFileFormat,
-                                 "Bad format for \"" + std::string(JOBS_ENGINE_THREADS_COUNT) + "." + name + 
+                                 "Bad format for \"" + std::string(JOBS_ENGINE_THREADS_COUNT) + "." + name +
                                  "\".  It should be an unsigned integer");
         }
         jobsEngineThreadsCount_[name] = source[name].asUInt();
-      }      
+      }
     }
   }
 
   unsigned int OrthancConfiguration::GetJobsEngineWorkersThread(const std::string& jobType) const
   {
     unsigned int workersThread = 1;
-    
+
     const JobsEngineThreadsCount::const_iterator it = jobsEngineThreadsCount_.find(jobType);
     if (it != jobsEngineThreadsCount_.end())
     {
@@ -370,7 +370,7 @@ namespace Orthanc
   std::string OrthancConfiguration::GetOrthancAET() const
   {
     std::string aet = GetStringParameter(ORTHANC_CONFIG_DICOM_AET);
-    
+
     if (!Toolbox::IsValidAet(aet))
     {
       throw OrthancException(ErrorCode_BadFileFormat, std::string("Option \"") + ORTHANC_CONFIG_DICOM_AET +
@@ -441,7 +441,7 @@ namespace Orthanc
     }
   }
 
-    
+
   void OrthancConfiguration::SavePeersToJson(Json::Value& target)
   {
     target = Json::objectValue;
@@ -449,15 +449,15 @@ namespace Orthanc
     for (Peers::const_iterator it = peers_.begin(); it != peers_.end(); ++it)
     {
       Json::Value peer;
-      it->second.Serialize(peer, 
-                           false /* use simple format if possible */, 
+      it->second.Serialize(peer,
+                           false /* use simple format if possible */,
                            true  /* include passwords */);
 
       target[it->first] = peer;
     }
-  }  
-    
-    
+  }
+
+
   void OrthancConfiguration::SaveModalities()
   {
     if (GetBooleanParameter(DICOM_MODALITIES_IN_DB))
@@ -474,7 +474,7 @@ namespace Orthanc
 
         std::string s;
         Toolbox::WriteFastJson(s, modalities);
-        
+
         serverIndex_->SetGlobalProperty(GlobalProperty_Modalities, false /* not shared */, s);
       }
     }
@@ -629,7 +629,7 @@ namespace Orthanc
     }
   }
 
-    
+
   static bool LookupUnsignedIntegerParameterInternal(unsigned int& target,
                                                      const Json::Value& config,
                                                      const std::string& parameter)
@@ -756,7 +756,7 @@ namespace Orthanc
       {
         return boost::filesystem::absolute(first).string();
       }
-    }    
+    }
   }
 
 
@@ -855,7 +855,7 @@ namespace Orthanc
   {
     target.clear();
 
-    for (Modalities::const_iterator 
+    for (Modalities::const_iterator
            it = modalities_.begin(); it != modalities_.end(); ++it)
     {
       target.insert(it->first);
@@ -916,8 +916,9 @@ namespace Orthanc
           httpServer.RegisterUser(username.c_str(), password.c_str());
           hasUser = true;
 
-          if ((username == "orthanc" && password == "orthanc") ||
-              (username == "alice" && password == "orthanctest"))
+          if ((username == "orthanc" && password == "orthanc") ||    // Used in some Docker images
+              (username == "alice" && password == "orthanctest") ||  // Used in the integration tests
+              (username == "alice" && password == "alicePassword"))  // Suggestion in the Debian packages
           {
             LOG(WARNING) << "====> Your configuration contains a username/password pair with well-known credentials "
                          << "(check out username \"" << username << "\" in option \"" << REGISTERED_USERS
@@ -932,7 +933,7 @@ namespace Orthanc
               RegisteredUsersStatus_NoUser);
     }
   }
-    
+
 
   boost::filesystem::path OrthancConfiguration::InterpretStringParameterAsPath(
     const std::string& parameter) const
@@ -940,12 +941,12 @@ namespace Orthanc
     return SystemToolbox::InterpretRelativePath(defaultDirectory_, parameter);
   }
 
-    
+
   void OrthancConfiguration::GetListOfStringsParameter(std::list<std::string>& target,
                                                        const std::string& key) const
   {
     target.clear();
-  
+
     if (!userConfiguration_.isMember(key))
     {
       return;
@@ -961,7 +962,7 @@ namespace Orthanc
     for (Json::Value::ArrayIndex i = 0; i < lst.size(); i++)
     {
       target.push_back(lst[i].asString());
-    }    
+    }
   }
 
 
@@ -969,7 +970,7 @@ namespace Orthanc
                                                       const std::string& key) const
   {
     target.clear();
-  
+
     if (!userConfiguration_.isMember(key))
     {
       return;
@@ -985,7 +986,7 @@ namespace Orthanc
     for (Json::Value::ArrayIndex i = 0; i < lst.size(); i++)
     {
       target.insert(lst[i].asString());
-    }    
+    }
   }
 
 
@@ -1023,7 +1024,7 @@ namespace Orthanc
     return false;
   }
 
-  
+
   void OrthancConfiguration::LookupDicomModalitiesUsingAETitle(std::list<RemoteModalityParameters>& modalities,
                                                                const std::string& aet) const
   {
@@ -1044,7 +1045,7 @@ namespace Orthanc
                                             const std::string& ip) const
   {
     RemoteModalityParameters modality;
-    
+
     if (!LookupDicomModalityUsingAETitle(modality, aet))
     {
       LOG(WARNING) << "Modality \"" << aet
@@ -1067,7 +1068,7 @@ namespace Orthanc
   }
 
 
-  RemoteModalityParameters 
+  RemoteModalityParameters
   OrthancConfiguration::GetModalityUsingSymbolicName(const std::string& name) const
   {
     RemoteModalityParameters modality;
@@ -1076,12 +1077,12 @@ namespace Orthanc
     return modality;
   }
 
-    
-  RemoteModalityParameters 
+
+  RemoteModalityParameters
   OrthancConfiguration::GetModalityUsingAet(const std::string& aet) const
   {
     RemoteModalityParameters modality;
-      
+
     if (LookupDicomModalityUsingAETitle(modality, aet))
     {
       return modality;
@@ -1093,12 +1094,12 @@ namespace Orthanc
     }
   }
 
-    
+
   void OrthancConfiguration::UpdateModality(const std::string& symbolicName,
                                             const RemoteModalityParameters& modality)
   {
     CheckAlphanumeric(symbolicName);
-    
+
     modalities_[symbolicName] = modality;
     SaveModalities();
   }
@@ -1118,12 +1119,12 @@ namespace Orthanc
     }
   }
 
-    
+
   void OrthancConfiguration::UpdatePeer(const std::string& symbolicName,
                                         const WebServiceParameters& peer)
   {
     CheckAlphanumeric(symbolicName);
-    
+
     peer.CheckClientCertificate();
 
     peers_[symbolicName] = peer;
@@ -1201,7 +1202,7 @@ namespace Orthanc
     serverIndex_ = NULL;
   }
 
-  
+
   TemporaryFile* OrthancConfiguration::CreateTemporaryFile() const
   {
     std::string temporaryDirectory = ".";
@@ -1366,54 +1367,23 @@ namespace Orthanc
 
       for (size_t i = 0; i < members.size(); i++)
       {
-        const std::string& name = members[i];
+        const std::string& name = members[i];  // name is something like W001_TagsBeingReadFromStorage or W123
         bool enabled = warnings[name].asBool();
 
-        Warnings warning = Warnings_None;
-        if (name == "W001_TagsBeingReadFromStorage")
+        std::vector<std::string> splitName;
+        Toolbox::SplitString(splitName, name, '_');
+
+        if (splitName.size() >= 1)
         {
-          warning = Warnings_001_TagsBeingReadFromStorage;
-        }
-        else if (name == "W002_InconsistentDicomTagsInDb")
-        {
-          warning = Warnings_002_InconsistentDicomTagsInDb;
-        }
-        else if (name == "W003_DecoderFailure")
-        {
-          warning = Warnings_003_DecoderFailure;
-        }
-        else if (name == "W004_NoMainDicomTagsSignature")
-        {
-          warning = Warnings_004_NoMainDicomTagsSignature;
-        }
-        else if (name == "W005_RequestingTagFromLowerResourceLevel")
-        {
-          warning = Warnings_005_RequestingTagFromLowerResourceLevel;
-        }
-        else if (name == "W006_RequestingTagFromMetaHeader")
-        {
-          warning = Warnings_006_RequestingTagFromMetaHeader;
-        }
-        else if (name == "W007_MissingRequestedTagsNotReadFromDisk")
-        {
-          warning = Warnings_007_MissingRequestedTagsNotReadFromDisk;
-        }
-        else
-        {
-          throw OrthancException(ErrorCode_BadFileFormat, name + " is not recognized as a valid warning name");
+          Logging::SetMessageIdEnabled(splitName[0], enabled);
+          if (!enabled)
+          {
+            LOG(WARNING) << "Disabling warning '" << splitName[0] << "'";
+          }
         }
 
-        if (!enabled)
-        {
-          disabledWarnings_.insert(warning);
-        }
       }
     }
-    else
-    {
-      disabledWarnings_.clear();
-    }
-
   }
 
 
@@ -1423,15 +1393,15 @@ namespace Orthanc
     std::set<DicomTag> ignoreTagLength;
     dicom.ExtractDicomSummary(target, ORTHANC_MAXIMUM_TAG_LENGTH, ignoreTagLength);
   }
-  
-    
+
+
   void OrthancConfiguration::DefaultExtractDicomSummary(DicomMap& target,
                                                         DcmDataset& dicom)
   {
     std::set<DicomTag> ignoreTagLength;
     FromDcmtkBridge::ExtractDicomSummary(target, dicom, ORTHANC_MAXIMUM_TAG_LENGTH, ignoreTagLength);
-  }    
-    
+  }
+
 
   void OrthancConfiguration::DefaultDicomDatasetToJson(Json::Value& target,
                                                        const ParsedDicomFile& dicom)
@@ -1445,19 +1415,19 @@ namespace Orthanc
                                                        DcmDataset& dicom,
                                                        const std::set<DicomTag>& ignoreTagLength)
   {
-    FromDcmtkBridge::ExtractDicomAsJson(target, dicom, DicomToJsonFormat_Full, DicomToJsonFlags_Default, 
-                                        ORTHANC_MAXIMUM_TAG_LENGTH, ignoreTagLength);    
-  }    
-  
-    
+    FromDcmtkBridge::ExtractDicomAsJson(target, dicom, DicomToJsonFormat_Full, DicomToJsonFlags_Default,
+                                        ORTHANC_MAXIMUM_TAG_LENGTH, ignoreTagLength);
+  }
+
+
   void OrthancConfiguration::DefaultDicomDatasetToJson(Json::Value& target,
                                                        const ParsedDicomFile& dicom,
                                                        const std::set<DicomTag>& ignoreTagLength)
   {
-    dicom.DatasetToJson(target, DicomToJsonFormat_Full, DicomToJsonFlags_Default, 
+    dicom.DatasetToJson(target, DicomToJsonFormat_Full, DicomToJsonFlags_Default,
                         ORTHANC_MAXIMUM_TAG_LENGTH, ignoreTagLength);
   }
-  
+
 
   void OrthancConfiguration::DefaultDicomHeaderToJson(Json::Value& target,
                                                       const ParsedDicomFile& dicom)

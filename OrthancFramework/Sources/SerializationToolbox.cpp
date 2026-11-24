@@ -53,10 +53,10 @@ namespace Orthanc
     }
 #else
     return DicomTag::ParseHexadecimal(tag, name);
-#endif   
+#endif
   }
 
-    
+
   std::string SerializationToolbox::ReadString(const Json::Value& value,
                                                const std::string& field)
   {
@@ -105,10 +105,10 @@ namespace Orthanc
       int64_t v64 = value[field].asInt64();
       if (v64 > static_cast<int64_t>(std::numeric_limits<int>::max()))
       {
-        throw OrthancException(ErrorCode_BadParameterType, "Value too large to fit in an integer in field '" + field + "'"); 
+        throw OrthancException(ErrorCode_BadParameterType, "Value too large to fit in an integer in field '" + field + "'");
       }
       return static_cast<int>(v64);
-    }    
+    }
   }
 
 
@@ -144,11 +144,11 @@ namespace Orthanc
 
       if (v64 < 0)
       {
-        throw OrthancException(ErrorCode_BadParameterType, "Negative value found while expecting an unsigned int in field '" + field + "'"); 
+        throw OrthancException(ErrorCode_BadParameterType, "Negative value found while expecting an unsigned int in field '" + field + "'");
       }
 
       return static_cast<unsigned int>(v64);
-    }    
+    }
   }
 
 
@@ -180,10 +180,10 @@ namespace Orthanc
     else
     {
       return value[field.c_str()].asBool();
-    }   
+    }
   }
 
-  
+
   void SerializationToolbox::ReadArrayOfStrings(std::vector<std::string>& target,
                                                 const Json::Value& valueObject,
                                                 const std::string& field)
@@ -193,7 +193,7 @@ namespace Orthanc
         valueObject[field.c_str()].type() != Json::arrayValue)
     {
       throw OrthancException(ErrorCode_BadFileFormat,
-                            "List of strings expected in field: " + field);
+                             "List of strings expected in field: " + field);
     }
 
     const Json::Value& arr = valueObject[field.c_str()];
@@ -250,7 +250,7 @@ namespace Orthanc
       target.push_back(tmp[i]);
     }
   }
-  
+
 
   void SerializationToolbox::ReadSetOfStrings(std::set<std::string>& target,
                                               const Json::Value& valueObject,
@@ -397,7 +397,7 @@ namespace Orthanc
     }
 
     target.clear();
-    
+
     for (Json::ArrayIndex i = 0; i < value[field].size(); ++i)
     {
       target[value[field][i]["ID"].asString()] = StringToResourceType(value[field][i]["Type"].asString().c_str());
@@ -407,7 +407,7 @@ namespace Orthanc
   void SerializationToolbox::WriteMapOfResourcesAndTypes(Json::Value& targetArray,
                                                          const std::map<std::string, ResourceType>& values)
   {
-    for (std::map<std::string, ResourceType>::const_iterator it = values.begin(); it != values.end(); ++it) 
+    for (std::map<std::string, ResourceType>::const_iterator it = values.begin(); it != values.end(); ++it)
     {
       Json::Value resource;
       resource["ID"] = it->first;
@@ -568,19 +568,25 @@ namespace Orthanc
   {
     try
     {
-      std::string value = Toolbox::StripSpaces(source);
-      if (value.empty())
+      if (source.empty())
+      {
+	return false;
+      }
+
+      const std::string stripped = Toolbox::StripSpaces(source);
+
+      if (stripped.empty())
       {
         return false;
       }
       else if (!allowSigned &&
-               value[0] == '-')
+               stripped[0] == '-')
       {
         return false;
       }
       else
       {
-        target = boost::lexical_cast<T>(value);
+        target = boost::lexical_cast<T>(stripped);
         return true;
       }
     }
@@ -605,14 +611,14 @@ namespace Orthanc
       return false;
     }
   }
-  
+
 
   bool SerializationToolbox::ParseInteger64(int64_t& target,
                                             const std::string& source)
   {
     return ParseValue<int64_t, true>(target, source);
   }
-  
+
 
   bool SerializationToolbox::ParseUnsignedInteger32(uint32_t& target,
                                                     const std::string& source)
@@ -628,7 +634,7 @@ namespace Orthanc
       return false;
     }
   }
-  
+
 
   bool SerializationToolbox::ParseUnsignedInteger64(uint64_t& target,
                                                     const std::string& source)
@@ -636,7 +642,7 @@ namespace Orthanc
     return ParseValue<uint64_t, false>(target, source);
   }
 
-  
+
   bool SerializationToolbox::ParseUnsignedInteger(unsigned int& target,
                                                   const std::string& source)
   {
@@ -649,7 +655,7 @@ namespace Orthanc
   {
     return ParseValue<float, true>(target, source);
   }
-         
+
 
   bool SerializationToolbox::ParseDouble(double& target,
                                          const std::string& source)
@@ -658,113 +664,75 @@ namespace Orthanc
   }
 
 
-  static bool GetFirstItem(std::string& target,
+  static void GetFirstItem(std::string& target,
                            const std::string& source)
   {
-    std::vector<std::string> tokens;
-    Toolbox::TokenizeString(tokens, source, '\\');
+    const size_t pos = source.find('\\');
 
-    if (tokens.empty())
+    if (pos == std::string::npos)
     {
-      return false;
+      target = source;
     }
     else
     {
-      target = tokens[0];
-      return true;
+      target.assign(source, 0, pos);
     }
   }
-  
+
 
   bool SerializationToolbox::ParseFirstInteger32(int32_t& target,
                                                  const std::string& source)
   {
     std::string first;
-    if (GetFirstItem(first, source))
-    {
-      return ParseInteger32(target, first);
-    }
-    else
-    {
-      return false;
-    }
+    GetFirstItem(first, source);
+    return ParseInteger32(target, first);
   }
-  
+
 
   bool SerializationToolbox::ParseFirstInteger64(int64_t& target,
                                                  const std::string& source)
   {
     std::string first;
-    if (GetFirstItem(first, source))
-    {
-      return ParseInteger64(target, first);
-    }
-    else
-    {
-      return false;
-    }
+    GetFirstItem(first, source);
+    return ParseInteger64(target, first);
   }
-  
+
 
   bool SerializationToolbox::ParseFirstUnsignedInteger32(uint32_t& target,
                                                          const std::string& source)
   {
     std::string first;
-    if (GetFirstItem(first, source))
-    {
-      return ParseUnsignedInteger32(target, first);
-    }
-    else
-    {
-      return false;
-    }
+    GetFirstItem(first, source);
+    return ParseUnsignedInteger32(target, first);
   }
-  
+
 
   bool SerializationToolbox::ParseFirstUnsignedInteger64(uint64_t& target,
                                                          const std::string& source)
   {
     std::string first;
-    if (GetFirstItem(first, source))
-    {
-      return ParseUnsignedInteger64(target, first);
-    }
-    else
-    {
-      return false;
-    }
+    GetFirstItem(first, source);
+    return ParseUnsignedInteger64(target, first);
   }
-  
+
 
   bool SerializationToolbox::ParseFirstFloat(float& target,
                                              const std::string& source)
   {
     std::string first;
-    if (GetFirstItem(first, source))
-    {
-      return ParseFloat(target, first);
-    }
-    else
-    {
-      return false;
-    }
+    GetFirstItem(first, source);
+    return ParseFloat(target, first);
   }
-  
+
 
   bool SerializationToolbox::ParseFirstDouble(double& target,
                                               const std::string& source)
   {
     std::string first;
-    if (GetFirstItem(first, source))
-    {
-      return ParseDouble(target, first);
-    }
-    else
-    {
-      return false;
-    }
+    GetFirstItem(first, source);
+    return ParseDouble(target, first);
   }
-  
+
 
   bool SerializationToolbox::ParseBoolean(bool& result,
                                           const std::string& value)

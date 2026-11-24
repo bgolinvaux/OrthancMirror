@@ -30,7 +30,7 @@ endif()
 if (SQLITE_STATIC)
   SET(SQLITE_SOURCES_DIR ${CMAKE_BINARY_DIR}/sqlite-amalgamation-3500400)
   SET(SQLITE_MD5 "440abd85c5ee3297dd388ade51fec0cc")
-  SET(SQLITE_URL "https://orthanc.uclouvain.be/downloads/third-party-downloads/sqlite-amalgamation-3500400.zip")
+  SET(SQLITE_URL "${THIRD_PARTY_DOWNLOADS_ROOT_URL}/sqlite-amalgamation-3500400.zip")
 
   set(ORTHANC_SQLITE_VERSION 3046001)
 
@@ -43,7 +43,7 @@ if (SQLITE_STATIC)
   add_definitions(
     # For SQLite to run in the "Serialized" thread-safe mode
     # http://www.sqlite.org/threadsafe.html
-    -DSQLITE_THREADSAFE=1  
+    -DSQLITE_THREADSAFE=1
     -DSQLITE_OMIT_LOAD_EXTENSION  # Disable SQLite plugins
     )
 
@@ -68,7 +68,7 @@ else()
   message("SQLite include dir: ${SQLITE_INCLUDE_DIR}")
 
   # Autodetection of the version of SQLite
-  file(STRINGS "${SQLITE_INCLUDE_DIR}/sqlite3.h" SQLITE_VERSION_NUMBER1 REGEX "#define SQLITE_VERSION_NUMBER.*$")    
+  file(STRINGS "${SQLITE_INCLUDE_DIR}/sqlite3.h" SQLITE_VERSION_NUMBER1 REGEX "#define SQLITE_VERSION_NUMBER.*$")
   string(REGEX REPLACE "#define SQLITE_VERSION_NUMBER(.*)$" "\\1" SQLITE_VERSION_NUMBER2 ${SQLITE_VERSION_NUMBER1})
 
   # Remove the trailing spaces to convert the string to a proper integer

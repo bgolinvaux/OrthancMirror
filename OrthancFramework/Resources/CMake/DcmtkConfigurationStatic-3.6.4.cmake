@@ -23,7 +23,7 @@
 SET(DCMTK_VERSION_NUMBER 364)
 SET(DCMTK_PACKAGE_VERSION "3.6.4")
 SET(DCMTK_SOURCES_DIR ${CMAKE_BINARY_DIR}/dcmtk-3.6.4)
-SET(DCMTK_URL "https://orthanc.uclouvain.be/downloads/third-party-downloads/dcmtk-3.6.4.tar.gz")
+SET(DCMTK_URL "${THIRD_PARTY_DOWNLOADS_ROOT_URL}/dcmtk-3.6.4.tar.gz")
 SET(DCMTK_MD5 "97597439a2ae7a39086066318db5f3bc")
 
 macro(DCMTK_UNSET)
@@ -174,14 +174,14 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux" OR
     ${CMAKE_SYSTEM_NAME} STREQUAL "kFreeBSD" OR
     ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD" OR
     ${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
-  list(REMOVE_ITEM DCMTK_SOURCES 
+  list(REMOVE_ITEM DCMTK_SOURCES
     ${DCMTK_SOURCES_DIR}/oflog/libsrc/clfsap.cc
     ${DCMTK_SOURCES_DIR}/oflog/libsrc/windebap.cc
     ${DCMTK_SOURCES_DIR}/oflog/libsrc/winsock.cc
     )
 
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-  list(REMOVE_ITEM DCMTK_SOURCES 
+  list(REMOVE_ITEM DCMTK_SOURCES
     ${DCMTK_SOURCES_DIR}/oflog/libsrc/unixsock.cc
     ${DCMTK_SOURCES_DIR}/oflog/libsrc/clfsap.cc
     )

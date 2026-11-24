@@ -23,7 +23,7 @@
 SET(DCMTK_VERSION_NUMBER 368)
 SET(DCMTK_PACKAGE_VERSION "3.6.8")
 SET(DCMTK_SOURCES_DIR ${CMAKE_BINARY_DIR}/dcmtk-DCMTK-3.6.8)
-SET(DCMTK_URL "https://orthanc.uclouvain.be/downloads/third-party-downloads/dcmtk-3.6.8.tar.gz")
+SET(DCMTK_URL "${THIRD_PARTY_DOWNLOADS_ROOT_URL}/dcmtk-3.6.8.tar.gz")
 SET(DCMTK_MD5 "ce3e878c05165f1a3322c29e67f2426f")
 
 macro(DCMTK_UNSET)
@@ -76,11 +76,11 @@ if (FirstRun)
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
       RESULT_VARIABLE Failure
       )
-    
+
     if (Failure)
       message(FATAL_ERROR "Error while patching a file")
-    endif()    
-  endif()  
+    endif()
+  endif()
 
   configure_file(
     ${CMAKE_CURRENT_LIST_DIR}/../Patches/dcmtk-dcdict_orthanc.cc
@@ -233,14 +233,14 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux" OR
     ${CMAKE_SYSTEM_NAME} STREQUAL "kFreeBSD" OR
     ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD" OR
     ${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
-  list(REMOVE_ITEM DCMTK_SOURCES 
+  list(REMOVE_ITEM DCMTK_SOURCES
     ${DCMTK_SOURCES_DIR}/oflog/libsrc/clfsap.cc
     ${DCMTK_SOURCES_DIR}/oflog/libsrc/windebap.cc
     ${DCMTK_SOURCES_DIR}/oflog/libsrc/winsock.cc
     )
 
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-  list(REMOVE_ITEM DCMTK_SOURCES 
+  list(REMOVE_ITEM DCMTK_SOURCES
     ${DCMTK_SOURCES_DIR}/oflog/libsrc/unixsock.cc
     ${DCMTK_SOURCES_DIR}/oflog/libsrc/clfsap.cc
     )

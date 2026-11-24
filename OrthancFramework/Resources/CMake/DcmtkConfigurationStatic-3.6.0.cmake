@@ -23,7 +23,7 @@
 SET(DCMTK_VERSION_NUMBER 360)
 SET(DCMTK_PACKAGE_VERSION "3.6.0")
 SET(DCMTK_SOURCES_DIR ${CMAKE_BINARY_DIR}/dcmtk-3.6.0)
-SET(DCMTK_URL "https://orthanc.uclouvain.be/downloads/third-party-downloads/dcmtk-3.6.0.zip")
+SET(DCMTK_URL "${THIRD_PARTY_DOWNLOADS_ROOT_URL}/dcmtk-3.6.0.zip")
 SET(DCMTK_MD5 "219ad631b82031806147e4abbfba4fa4")
 
 if (IS_DIRECTORY "${DCMTK_SOURCES_DIR}")
@@ -48,7 +48,7 @@ if (FirstRun)
   else()
     message("Using the dictionary of private tags from DCMTK 3.6.0")
   endif()
-  
+
   # Patches specific to DCMTK 3.6.0
   message("Applying patch to solve vulnerability in DCMTK 3.6.0")
   execute_process(
@@ -171,14 +171,14 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux" OR
     ${CMAKE_SYSTEM_NAME} STREQUAL "kFreeBSD" OR
     ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD" OR
     ${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
-  list(REMOVE_ITEM DCMTK_SOURCES 
+  list(REMOVE_ITEM DCMTK_SOURCES
     ${DCMTK_SOURCES_DIR}/oflog/libsrc/clfsap.cc
     ${DCMTK_SOURCES_DIR}/oflog/libsrc/windebap.cc
     ${DCMTK_SOURCES_DIR}/oflog/libsrc/winsock.cc
     )
 
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-  list(REMOVE_ITEM DCMTK_SOURCES 
+  list(REMOVE_ITEM DCMTK_SOURCES
     ${DCMTK_SOURCES_DIR}/oflog/libsrc/unixsock.cc
     ${DCMTK_SOURCES_DIR}/oflog/libsrc/clfsap.cc
     )

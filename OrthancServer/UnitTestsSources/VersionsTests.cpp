@@ -10,7 +10,7 @@
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -80,7 +80,7 @@ TEST(Versions, SQLite)
   // http://www.sqlite.org/capi3ref.html#sqlite3_libversion
   EXPECT_EQ(sqlite3_libversion_number(), SQLITE_VERSION_NUMBER);
   EXPECT_STREQ(sqlite3_libversion(), SQLITE_VERSION);
-  
+
   /**
    * On Orthanc > 1.5.8, we comment out the following test, that is
    * too strict for some GNU/Linux distributions to apply their own
@@ -113,7 +113,7 @@ TEST(Versions, ZlibStatic)
 
 TEST(Versions, BoostStatic)
 {
-  ASSERT_TRUE(std::string(BOOST_LIB_VERSION) == "1_89" ||
+  ASSERT_TRUE(std::string(BOOST_LIB_VERSION) == "1_92" ||
               std::string(BOOST_LIB_VERSION) == "1_69" /* if USE_LEGACY_BOOST */);
 }
 
@@ -159,7 +159,7 @@ TEST(Versions, LuaStatic)
 TEST(Versions, LibIconvStatic)
 {
   static const int major = 1;
-  static const int minor = 15;  
+  static const int minor = 15;
   ASSERT_EQ((major << 8) + minor, _LIBICONV_VERSION);
 }
 #endif
@@ -168,11 +168,10 @@ TEST(Versions, LibIconvStatic)
 #if ORTHANC_ENABLE_SSL == 1
 TEST(Versions, OpenSslStatic)
 {
-  // openssl-3.1.4
   // https://www.openssl.org/docs/man3.0/man3/OPENSSL_VERSION_NUMBER.html
   ASSERT_EQ(3 /* major */ * 0x10000000L +
-            1 /* minor */ * 0x00100000L +
-            4 /* patch */ * 0x00000010L, OPENSSL_VERSION_NUMBER);
+            5 /* minor */ * 0x00100000L +
+            9 /* patch */ * 0x00000010L, OPENSSL_VERSION_NUMBER);
 }
 #endif
 

@@ -10,7 +10,7 @@
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -26,6 +26,7 @@
 
 #include "../../../OrthancFramework/Sources/Compatibility.h"
 #include "../../../OrthancFramework/Sources/DicomNetworking/DicomAssociation.h"
+#include "../../../OrthancFramework/Sources/ElapsedTimer.h"
 #include "../../../OrthancFramework/Sources/Logging.h"
 #include "../../../OrthancFramework/Sources/SerializationToolbox.h"
 #include "../ServerContext.h"
@@ -46,10 +47,12 @@ namespace Orthanc
   bool DicomModalityStoreJob::HandleInstance(const std::string& instance)
   {
     assert(IsStarted());
-    OpenConnection();
+    ElapsedTimer elapsedTimer;
 
-    LOG(INFO) << "Sending instance " << instance << " to modality \"" 
+    LOG(INFO) << "Sending instance " << instance << " to modality \""
               << parameters_.GetRemoteModality().GetApplicationEntityTitle() << "\"";
+
+    OpenConnection();
 
     std::unique_ptr<DicomSequentialReader::Item> item;
 
@@ -79,33 +82,32 @@ namespace Orthanc
       {
         THROW_WITH_FILE_AND_LINE_INFO(ErrorCode_InternalError);
       }
-      
+
       if (sopClassUids_.size() == GetInstancesCount())
       {
         assert(IsStarted());
         connection_.reset(NULL);
-        
+
         const std::string& remoteAet = parameters_.GetRemoteModality().GetApplicationEntityTitle();
-        
+
         LOG(INFO) << "Sending storage commitment request to modality: " << remoteAet;
 
         // Create a "pending" storage commitment report BEFORE the
         // actual SCU call in order to avoid race conditions
-        context_.GetStorageCommitmentReports().Store(
-          transactionUid_, new StorageCommitmentReports::Report(remoteAet));
+        std::unique_ptr<StorageCommitmentReports::Report> request(new StorageCommitmentReports::Report(remoteAet));
+        request->AddRequestedInstances(sopClassUids_, sopInstanceUids_);
         
-        std::vector<std::string> a(sopClassUids_.begin(), sopClassUids_.end());
-        std::vector<std::string> b(sopInstanceUids_.begin(), sopInstanceUids_.end());
+        context_.GetStorageCommitmentReports().Store(transactionUid_, request.release());
 
-        DicomAssociation::RequestStorageCommitment(parameters_, transactionUid_, a, b);
+        DicomAssociation::RequestStorageCommitment(parameters_, transactionUid_, sopClassUids_, sopInstanceUids_);
       }
     }
 
-    //boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+    LOG(INFO) << "Sent instance " << instance << " (elapsed: " << elapsedTimer.GetHumanElapsedDuration() << ")";
 
     return true;
   }
-    
+
 
   bool DicomModalityStoreJob::HandleTrailingStep()
   {
@@ -147,7 +149,7 @@ namespace Orthanc
     }
   }
 
-    
+
   void DicomModalityStoreJob::SetTimeout(uint32_t seconds)
   {
     if (IsStarted())
@@ -173,7 +175,7 @@ namespace Orthanc
     }
   }
 
-    
+
   uint16_t DicomModalityStoreJob::GetMoveOriginatorId() const
   {
     if (HasMoveOriginator())
@@ -194,7 +196,7 @@ namespace Orthanc
     {
       throw OrthancException(ErrorCode_BadSequenceOfCalls);
     }
-    else if (id < 0 || 
+    else if (id < 0 ||
              id >= 65536)
     {
       throw OrthancException(ErrorCode_ParameterOutOfRange);
@@ -222,7 +224,7 @@ namespace Orthanc
       sopInstanceUids_.clear();
     }
   }
-  
+
 
   void DicomModalityStoreJob::Reset()
   {
@@ -236,19 +238,19 @@ namespace Orthanc
      **/
     ResetStorageCommitment();
   }
-  
+
 
   void DicomModalityStoreJob::EnableStorageCommitment(bool enabled)
   {
     storageCommitment_ = enabled;
     ResetStorageCommitment();
   }
-  
+
 
   void DicomModalityStoreJob::GetPublicContent(Json::Value& value) const
   {
     SetOfInstancesJob::GetPublicContent(value);
-    
+
     value["LocalAet"] = parameters_.GetLocalApplicationEntityTitle();
     value["RemoteAet"] = parameters_.GetRemoteModality().GetApplicationEntityTitle();
 
@@ -268,7 +270,7 @@ namespace Orthanc
   static const char* MOVE_ORIGINATOR_AET = "MoveOriginatorAet";
   static const char* MOVE_ORIGINATOR_ID = "MoveOriginatorId";
   static const char* STORAGE_COMMITMENT = "StorageCommitment";
-  
+
 
   DicomModalityStoreJob::DicomModalityStoreJob(ServerContext& context,
                                                const Json::Value& serialized) :
@@ -297,5 +299,5 @@ namespace Orthanc
       target[STORAGE_COMMITMENT] = storageCommitment_;
       return true;
     }
-  }  
+  }
 }

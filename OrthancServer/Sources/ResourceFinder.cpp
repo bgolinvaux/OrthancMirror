@@ -297,7 +297,7 @@ namespace Orthanc
         {
           uint32_t expectedNumberOfInstances;
           SeriesStatus status = GetSeriesStatus(expectedNumberOfInstances, resource);
-          
+
           if (responseContent_ & ResponseContentFlags_Status )
           {
             target["Status"] = EnumerationToString(status);
@@ -466,7 +466,7 @@ namespace Orthanc
 
       for (std::map<FileContentType, FileInfo>::const_iterator it = attachments.begin(); it != attachments.end(); ++it)
       {
-        Json::Value attachment = Json::objectValue;    
+        Json::Value attachment = Json::objectValue;
         attachment["Uuid"] = it->second.GetUuid();
         attachment["ContentType"] = it->second.GetContentType();
         attachment["UncompressedSize"] = Json::Value::UInt64(it->second.GetUncompressedSize());
@@ -565,18 +565,8 @@ namespace Orthanc
     limitsCount_(0),
     responseContent_(responseContent),
     storageAccessMode_(storageAccessMode),
-    supportsChildExistQueries_(supportsChildExistQueries),
-    isWarning002Enabled_(false),
-    isWarning004Enabled_(false),
-    isWarning005Enabled_(false)
+    supportsChildExistQueries_(supportsChildExistQueries)
   {
-    {
-      OrthancConfiguration::ReaderLock lock;
-      isWarning002Enabled_ = lock.GetConfiguration().IsWarningEnabled(Warnings_002_InconsistentDicomTagsInDb);
-      isWarning004Enabled_ = lock.GetConfiguration().IsWarningEnabled(Warnings_004_NoMainDicomTagsSignature);
-      isWarning005Enabled_ = lock.GetConfiguration().IsWarningEnabled(Warnings_005_RequestingTagFromLowerResourceLevel);
-    }
-
     request_.SetRetrieveMainDicomTags(responseContent_ & ResponseContentFlags_MainDicomTags);
     request_.SetRetrieveMetadata((responseContent_ & ResponseContentFlags_Metadata) || (responseContent_ & ResponseContentFlags_MetadataLegacy));
     request_.SetRetrieveLabels(responseContent_ & ResponseContentFlags_Labels);
@@ -585,13 +575,13 @@ namespace Orthanc
     {
       case ResourceType_Patient:
         request_.GetChildrenSpecification(ResourceType_Study).SetRetrieveIdentifiers(responseContent_ & ResponseContentFlags_Children);
-        request_.SetRetrieveAttachments(responseContent_ & ResponseContentFlags_Attachments); 
+        request_.SetRetrieveAttachments(responseContent_ & ResponseContentFlags_Attachments);
         break;
 
       case ResourceType_Study:
         request_.GetChildrenSpecification(ResourceType_Series).SetRetrieveIdentifiers(responseContent_ & ResponseContentFlags_Children);
         request_.SetRetrieveParentIdentifier(responseContent_ & ResponseContentFlags_Parent);
-        request_.SetRetrieveAttachments(responseContent_ & ResponseContentFlags_Attachments); 
+        request_.SetRetrieveAttachments(responseContent_ & ResponseContentFlags_Attachments);
         break;
 
       case ResourceType_Series:
@@ -601,12 +591,12 @@ namespace Orthanc
         }
         request_.GetChildrenSpecification(ResourceType_Instance).SetRetrieveIdentifiers(responseContent_ & ResponseContentFlags_Children);
         request_.SetRetrieveParentIdentifier(responseContent_ & ResponseContentFlags_Parent);
-        request_.SetRetrieveAttachments(responseContent_ & ResponseContentFlags_Attachments); 
+        request_.SetRetrieveAttachments(responseContent_ & ResponseContentFlags_Attachments);
         break;
 
       case ResourceType_Instance:
         request_.SetRetrieveAttachments((responseContent_ & ResponseContentFlags_AttachmentsLegacy) // for FileSize & FileUuid
-                                        || (responseContent_ & ResponseContentFlags_Attachments)); 
+                                        || (responseContent_ & ResponseContentFlags_Attachments));
         request_.SetRetrieveParentIdentifier(true);
         break;
 
@@ -740,11 +730,9 @@ namespace Orthanc
     {
       if (request_.GetLevel() == ResourceType_Patient)
       {
-        if (isWarning005Enabled_)
-        {
-          LOG(WARNING) << "W005: Requested tag " << tag.Format()
-                       << " should only be read at the study, series, or instance level";
-        }
+        LOG_WARNING("W005") << "Requested tag " << tag.Format()
+                    << " should only be read at the study, series, or instance level";
+
         request_.SetRetrieveOneInstanceMetadataAndAttachments(true); // we might need to get it from one instance
       }
       else
@@ -765,11 +753,9 @@ namespace Orthanc
       if (request_.GetLevel() == ResourceType_Patient ||
           request_.GetLevel() == ResourceType_Study)
       {
-        if (isWarning005Enabled_)
-        {
-          LOG(WARNING) << "W005: Requested tag " << tag.Format()
-                      << " should only be read at the series or instance level";
-        }
+        LOG_WARNING("W005") << "Requested tag " << tag.Format()
+                    << " should only be read at the series or instance level";
+
         request_.SetRetrieveOneInstanceMetadataAndAttachments(true); // we might need to get it from one instance
       }
       else
@@ -791,11 +777,9 @@ namespace Orthanc
           request_.GetLevel() == ResourceType_Study ||
           request_.GetLevel() == ResourceType_Series)
       {
-        if (isWarning005Enabled_)
-        {
-          LOG(WARNING) << "W005: Requested tag " << tag.Format()
-                       << " should only be read at the instance level";
-        }
+        LOG_WARNING("W005") << "Requested tag " << tag.Format()
+                    << " should only be read at the instance level";
+
         request_.SetRetrieveOneInstanceMetadataAndAttachments(true); // we might need to get it from one instance
       }
       else
@@ -852,7 +836,7 @@ namespace Orthanc
     {
       // This is neither a main DICOM tag, nor a computed DICOM tag:
       // We might need to access a DICOM file or the MainDicomSequences metadata
-      
+
       request_.SetRetrieveMetadata(true);
 
       if (request_.GetLevel() != ResourceType_Instance)
@@ -889,9 +873,9 @@ namespace Orthanc
       if (resource.GetMetadata(level).size() > 0)
       {
         GetMainDicomSequencesFromMetadata(m, resource, level);        // read DicomSequences from metadata
-      
+
         // check which tags have been saved in DB; that's the way to know if they are missing because they were not saved or because they have no value
-        
+
         std::string signature = DicomMap::GetDefaultMainDicomTagsSignatureFrom1_11(level); // default signature in case it's not in the metadata (= the signature for 1.11.0)
         if (resource.LookupMetadata(signature, level, MetadataType_MainDicomTagsSignature))
         {
@@ -941,13 +925,11 @@ namespace Orthanc
                                              const FindResponse::Resource& resource,
                                              const std::set<DicomTag>& missingTags)
   {
-    OrthancConfiguration::ReaderLock lock;
-    if (lock.GetConfiguration().IsWarningEnabled(Warnings_001_TagsBeingReadFromStorage))
     {
       std::string missings;
       FromDcmtkBridge::FormatListOfTags(missings, missingTags);
 
-      LOG(WARNING) << "W001: Accessing DICOM tags from storage when accessing "
+      LOG_WARNING("W001") << "Accessing DICOM tags from storage when accessing "
                    << Orthanc::GetResourceTypeText(resource.GetLevel(), false, false)
                    << " " << resource.GetIdentifier()
                    << ": " << missings;
@@ -1065,19 +1047,6 @@ namespace Orthanc
                              "Unable to use 'Since' when finding resources when querying against Dicom Tags that are not in the MainDicomTags or when using CaseSenstive queries.");
     }
 
-    bool isWarning002Enabled = false;
-    bool isWarning004Enabled = false;
-    bool isWarning006Enabled = false;
-    bool isWarning007Enabled = false;
-
-    {
-      OrthancConfiguration::ReaderLock lock;
-      isWarning002Enabled = lock.GetConfiguration().IsWarningEnabled(Warnings_002_InconsistentDicomTagsInDb);
-      isWarning004Enabled = lock.GetConfiguration().IsWarningEnabled(Warnings_004_NoMainDicomTagsSignature);
-      isWarning006Enabled = lock.GetConfiguration().IsWarningEnabled(Warnings_006_RequestingTagFromMetaHeader);
-      isWarning007Enabled = lock.GetConfiguration().IsWarningEnabled(Warnings_007_MissingRequestedTagsNotReadFromDisk);
-    }
-
     FindResponse response;
     context.GetIndex().ExecuteFind(response, request_);
 
@@ -1144,11 +1113,10 @@ namespace Orthanc
             }
           }
 
-          if (isWarning006Enabled)
           {
             std::string joinedMetaTags;
             FromDcmtkBridge::FormatListOfTags(joinedMetaTags, metaTagsToRemove);
-            LOG(WARNING) << "W006: Unable to include tags from the Meta Header in \"RequestedTags\".  Skipping them: " << joinedMetaTags;
+            LOG_WARNING("W006") << "Unable to include tags from the Meta Header in \"RequestedTags\".  Skipping them: " << joinedMetaTags;
           }
 
           Toolbox::RemoveSets(remainingRequestedTags, metaTagsToRemove);
@@ -1157,14 +1125,14 @@ namespace Orthanc
         // if SOPClassUID has been requested, we might still find it at metadata level (useful e.g. for StoneViewer)
         std::string sopClassUidFromMetadata;
         if (resource.GetLevel() == ResourceType_Instance &&
-            remainingRequestedTags.find(DICOM_TAG_SOP_CLASS_UID) != remainingRequestedTags.end() && 
+            remainingRequestedTags.find(DICOM_TAG_SOP_CLASS_UID) != remainingRequestedTags.end() &&
             resource.LookupMetadata(sopClassUidFromMetadata, ResourceType_Instance, MetadataType_Instance_SopClassUid))
         {
           outRequestedTags.SetValue(DICOM_TAG_SOP_CLASS_UID, sopClassUidFromMetadata, false);
           remainingRequestedTags.erase(DICOM_TAG_SOP_CLASS_UID);
         }
 
-        if (!remainingRequestedTags.empty() && 
+        if (!remainingRequestedTags.empty() &&
             !DicomMap::HasOnlyComputedTags(remainingRequestedTags)) // if the only remaining tags are computed tags, it is worthless to read them from disk
         {
           // If a lookup tag is not available from DB, it is included in remainingRequestedTags and it will always be included in the answer too
@@ -1173,30 +1141,30 @@ namespace Orthanc
           {
             ReadMissingTagsFromStorageArea(outRequestedTags, context, request_, resource, remainingRequestedTags);
           }
-          else if (isWarning007Enabled)
+          else
           {
             std::string joinedTags;
             FromDcmtkBridge::FormatListOfTags(joinedTags, remainingRequestedTags);
-            LOG(WARNING) << "W007: Unable to include requested tags since \"StorageAccessOnFind\" does not allow accessing the storage to build answers: " << joinedTags;
+            LOG_WARNING("W007") << "Unable to include requested tags since \"StorageAccessOnFind\" does not allow accessing the storage to build answers: " << joinedTags;
           }
         }
 
         std::string mainDicomTagsSignature;
-        if (isWarning002Enabled &&
+        if (Logging::IsMessageIdEnabled("W002") &&
             resource.LookupMetadata(mainDicomTagsSignature, resource.GetLevel(), MetadataType_MainDicomTagsSignature) &&
             mainDicomTagsSignature != DicomMap::GetMainDicomTagsSignature(resource.GetLevel()))
         {
-          LOG(WARNING) << "W002: " << Orthanc::GetResourceTypeText(resource.GetLevel(), false , false)
+          LOG_WARNING("W002") << Orthanc::GetResourceTypeText(resource.GetLevel(), false , false)
                        << " has been stored with another version of Main Dicom Tags list, you should POST to /"
                        << Orthanc::GetResourceTypeText(resource.GetLevel(), true, false)
                        << "/" << resource.GetIdentifier()
                        << "/reconstruct to update the list of tags saved in DB or run the Housekeeper plugin.  Some MainDicomTags might be missing from this answer.";
         }
-        else if (isWarning004Enabled && 
+        else if (Logging::IsMessageIdEnabled("W004") &&
                  request_.IsRetrieveMetadata() &&
                  !resource.LookupMetadata(mainDicomTagsSignature, resource.GetLevel(), MetadataType_MainDicomTagsSignature))
         {
-          LOG(WARNING) << "W004: " << Orthanc::GetResourceTypeText(resource.GetLevel(), false , false)
+          LOG_WARNING("W004") << Orthanc::GetResourceTypeText(resource.GetLevel(), false , false)
                        << " has been stored with an old Orthanc version and does not have a MainDicomTagsSignature, you should POST to /"
                        << Orthanc::GetResourceTypeText(resource.GetLevel(), true, false)
                        << "/" << resource.GetIdentifier()

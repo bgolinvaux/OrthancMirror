@@ -25,12 +25,12 @@ set(JSONCPP_CXX11 OFF)
 if (STATIC_BUILD OR NOT USE_SYSTEM_JSONCPP)
   if (USE_LEGACY_JSONCPP)
     set(JSONCPP_SOURCES_DIR ${CMAKE_BINARY_DIR}/jsoncpp-0.10.7)
-    set(JSONCPP_URL "https://orthanc.uclouvain.be/downloads/third-party-downloads/jsoncpp-0.10.7.tar.gz")
+    set(JSONCPP_URL "${THIRD_PARTY_DOWNLOADS_ROOT_URL}/jsoncpp-0.10.7.tar.gz")
     set(JSONCPP_MD5 "3a8072ca6a1fa9cbaf7715ae625f134f")
     add_definitions(-DORTHANC_LEGACY_JSONCPP=1)
   else()
     set(JSONCPP_SOURCES_DIR ${CMAKE_BINARY_DIR}/jsoncpp-1.9.5)
-    set(JSONCPP_URL "https://orthanc.uclouvain.be/downloads/third-party-downloads/jsoncpp-1.9.5.tar.gz")
+    set(JSONCPP_URL "${THIRD_PARTY_DOWNLOADS_ROOT_URL}/jsoncpp-1.9.5.tar.gz")
     set(JSONCPP_MD5 "d6c8c609f2162eff373db62b90a051c7")
     add_definitions(-DORTHANC_LEGACY_JSONCPP=0)
     set(JSONCPP_CXX11 ON)
@@ -51,7 +51,7 @@ if (STATIC_BUILD OR NOT USE_SYSTEM_JSONCPP)
   if (NOT ENABLE_LOCALE)
     add_definitions(-DJSONCPP_NO_LOCALE_SUPPORT=1)
   endif()
-    
+
   source_group(ThirdParty\\JsonCpp REGULAR_EXPRESSION ${JSONCPP_SOURCES_DIR}/.*)
 
 else()
@@ -72,16 +72,16 @@ else()
   # Detect if the version of JsonCpp is >= 1.0.0
   if (EXISTS ${JSONCPP_INCLUDE_DIR}/json/version.h)
     file(STRINGS
-      "${JSONCPP_INCLUDE_DIR}/json/version.h" 
+      "${JSONCPP_INCLUDE_DIR}/json/version.h"
       JSONCPP_VERSION_MAJOR1 REGEX
       ".*define JSONCPP_VERSION_MAJOR.*")
 
     if (NOT JSONCPP_VERSION_MAJOR1)
       message(FATAL_ERROR "Unable to extract the major version of JsonCpp")
     endif()
-    
+
     string(REGEX REPLACE
-      ".*JSONCPP_VERSION_MAJOR.*([0-9]+)$" "\\1" 
+      ".*JSONCPP_VERSION_MAJOR.*([0-9]+)$" "\\1"
       JSONCPP_VERSION_MAJOR ${JSONCPP_VERSION_MAJOR1})
     message("JsonCpp major version: ${JSONCPP_VERSION_MAJOR}")
 

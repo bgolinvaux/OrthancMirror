@@ -25,7 +25,7 @@
 #####################################################################
 
 # Version of the build, should always be "mainline" except in release branches
-set(ORTHANC_VERSION "1.13.0")
+set(ORTHANC_VERSION "1.13.1")
 
 # Version of the database schema. History:
 #   * Orthanc 0.1.0 -> Orthanc 0.3.0 = no versioning
@@ -39,12 +39,21 @@ set(ORTHANC_DATABASE_VERSION 6)
 # Version of the Orthanc API, can be retrieved from "/system" URI in
 # order to check whether new URI endpoints are available even if using
 # the mainline version of Orthanc
-set(ORTHANC_API_VERSION "31")
+set(ORTHANC_API_VERSION "32")
+
+# The version of DCMTK considered optimal for this version of
+# Orthanc. A warning is logged if the actual version contained in
+# DCMTK_VERSION_NUMBER is lower than this version.
+set(ORTHANC_DCMTK_VERSION_RECOMMENDED 371)
 
 
 #####################################################################
 ## CMake parameters tunable by the user
 #####################################################################
+
+# Customize the downloads url in case your device does not have access to uclouvain servers
+set(THIRD_PARTY_DOWNLOADS_ROOT_URL "https://orthanc.uclouvain.be/downloads/third-party-downloads" CACHE STRING "The base URL to download the 3rd parties from")
+set(ORTHANC_SOURCES_DOWNLOADS_ROOT_URL "https://orthanc.uclouvain.be/downloads/sources/orthanc" CACHE STRING "The base URL to download the Orthanc sources from")
 
 # Support of static compilation
 set(ALLOW_DOWNLOADS OFF CACHE BOOL "Allow CMake to download packages")
@@ -69,7 +78,7 @@ set(USE_SYSTEM_LIBJPEG ON CACHE BOOL "Use the system version of libjpeg")
 set(USE_SYSTEM_LIBP11 OFF CACHE BOOL "Use the system version of libp11 (PKCS#11 wrapper library)")
 set(USE_SYSTEM_LIBPNG ON CACHE BOOL "Use the system version of libpng")
 set(USE_SYSTEM_LUA ON CACHE BOOL "Use the system version of Lua")
-set(USE_SYSTEM_MINIZIP OFF CACHE BOOL "Use the system version minizip (new in Orthanc 1.12.11)")
+set(USE_SYSTEM_MINIZIP ON CACHE BOOL "Use the system version minizip (new in Orthanc 1.12.11)")
 set(USE_SYSTEM_MONGOOSE ON CACHE BOOL "Use the system version of Mongoose")
 set(USE_SYSTEM_OPENSSL ON CACHE BOOL "Use the system version of OpenSSL")
 set(USE_SYSTEM_PROTOBUF ON CACHE BOOL "Use the system version of Google Protocol Buffers")
@@ -79,7 +88,7 @@ set(USE_SYSTEM_UUID ON CACHE BOOL "Use the system version of the uuid library fr
 set(USE_SYSTEM_ZLIB ON CACHE BOOL "Use the system version of ZLib")
 
 set(DCMTK_DICTIONARY_DIR "" CACHE PATH "Directory containing the DCMTK dictionaries \"dicom.dic\" and \"private.dic\" (only when using system version of DCMTK)")
-set(DCMTK_STATIC_VERSION "3.7.0" CACHE STRING "Version of DCMTK to be used in static builds (can be \"3.6.0\", \"3.6.2\", \"3.6.4\", \"3.6.5\", \"3.6.6\", \"3.6.7\", \"3.6.8\", \"3.6.9\", or \"3.7.0\")")
+set(DCMTK_STATIC_VERSION "3.7.1" CACHE STRING "Version of DCMTK to be used in static builds (can be \"3.6.0\", \"3.6.2\", \"3.6.4\", \"3.6.5\", \"3.6.6\", \"3.6.7\", \"3.6.8\", \"3.6.9\", \"3.7.0\", or \"3.7.1\")")
 set(USE_DCMTK_362_PRIVATE_DIC ON CACHE BOOL "Use the dictionary of private tags from DCMTK 3.6.2 if using DCMTK 3.6.0")
 set(USE_SYSTEM_DCMTK ON CACHE BOOL "Use the system version of DCMTK")
 set(ENABLE_DCMTK_LOG ON CACHE BOOL "Enable logging internal to DCMTK")
@@ -98,7 +107,7 @@ set(USE_LEGACY_BOOST OFF CACHE BOOL "Use boost 1.69.0, latest version to be comp
 set(MSVC_MULTIPLE_PROCESSES OFF CACHE BOOL "Add the /MP option to build with multiple processes if using Visual Studio")
 set(EMSCRIPTEN_TARGET_MODE "wasm" CACHE STRING "Sets the target mode for Emscripten (can be \"wasm\" or \"asm.js\")")
 set(EMSCRIPTEN_TRAP_MODE "" CACHE STRING "Sets the trap mode for Emscripten for numeric errors (can notably be empty, or \"clamp\")")
-set(OPENSSL_STATIC_VERSION "3.0" CACHE STRING "Version of OpenSSL to be used in static builds (can be \"1.1.1\" or \"3.0\")")
+set(OPENSSL_STATIC_VERSION "default" CACHE STRING "Version of OpenSSL to be used in static builds (can be \"1.1.1\", \"3.1.4\", or \"default\")")
 set(CIVETWEB_OPENSSL_API "1.1" CACHE STRING "Version of the OpenSSL API to be used in civetweb in static builds (can be \"1.0\" or \"1.1\"")
 set(ORTHANC_LUA_VERSION "" CACHE STRING "Force the version of Lua to be used by Orthanc (for instance \"5.3\"), if empty, this will be autodetected")
 
@@ -141,7 +150,7 @@ set(ENABLE_DCMTK OFF CACHE INTERNAL "Enable DCMTK")
 set(ENABLE_DCMTK_NETWORKING OFF CACHE INTERNAL "Enable DICOM networking in DCMTK")
 set(ENABLE_DCMTK_TRANSCODING OFF CACHE INTERNAL "Enable DICOM transcoding in DCMTK")
 set(ENABLE_OPENSSL_ENGINES OFF CACHE INTERNAL "Enable support of engines in OpenSSL")
-set(ENABLE_BOOST_PROGRAM_OPTIONS OFF CACHE BOOL "Enable support for the boost::program_options library")  # New in Orthanc 1.13.0
+set(ENABLE_BOOST_PROGRAM_OPTIONS OFF CACHE INTERNAL "Enable support for the boost::program_options library")  # New in Orthanc 1.13.0
 
 set(ORTHANC_SANDBOXED OFF CACHE INTERNAL
   "Whether Orthanc runs inside a sandboxed environment, notably without access to files (such as Google NaCl or WebAssembly)")
